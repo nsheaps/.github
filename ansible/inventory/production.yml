@@ -1,0 +1,33 @@
+---
+# Production inventory for workflow synchronization
+# This file defines the target repositories and GitHub App configuration
+
+all:
+  vars:
+    # GitHub App authentication
+    github_app_id: "{{ vault_github_app_id }}"
+    github_installation_id: "{{ vault_github_installation_id }}"
+    github_private_key: "{{ vault_github_private_key }}"
+    
+    # Organization
+    github_org: "nsheaps"
+    
+    # Workflow sync settings
+    workflows_source_dir: "{{ playbook_dir }}/../templates/workflows"
+    force_sync: false
+    
+  children:
+    target_repos:
+      hosts:
+        # Add target repositories here
+        # Example:
+        # repo1:
+        #   github_repo: "nsheaps/repository-name"
+        #   workflows_to_sync:
+        #     - shared-ci.yml
+        #     - dependency-updates.yml
+        localhost:
+          ansible_connection: local
+          github_repo: "nsheaps/example-repo"
+          workflows_to_sync:
+            - shared-ci.yml

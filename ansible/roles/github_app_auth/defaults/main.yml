@@ -1,0 +1,7 @@
+---
+# Default variables for github_app_auth role
+
+# These should be overridden in inventory or playbook
+github_app_id: ""
+github_installation_id: ""
+github_private_key: ""

@@ -1,0 +1,58 @@
+---
+# GitHub App authentication role
+# This role generates a JWT token and retrieves an installation access token
+# for authenticating with the GitHub API using a GitHub App
+
+- name: Check if required variables are defined
+  ansible.builtin.assert:
+    that:
+      - github_app_id is defined
+      - github_installation_id is defined
+      - github_private_key is defined
+    fail_msg: "GitHub App credentials are not properly configured"
+
+- name: Install required Python packages
+  ansible.builtin.pip:
+    name:
+      - PyJWT
+      - cryptography
+      - requests
+    state: present
+  delegate_to: localhost
+
+- name: Generate GitHub App JWT token
+  ansible.builtin.script: ../templates/generate_jwt.py
+  args:
+    executable: python3
+  environment:
+    GITHUB_APP_ID: "{{ github_app_id }}"
+    GITHUB_PRIVATE_KEY: "{{ github_private_key }}"
+  register: jwt_token_result
+  delegate_to: localhost
+  no_log: true
+
+- name: Set JWT token fact
+  ansible.builtin.set_fact:
+    github_jwt_token: "{{ jwt_token_result.stdout | trim }}"
+  no_log: true
+
+- name: Get installation access token
+  ansible.builtin.uri:
+    url: "https://api.github.com/app/installations/{{ github_installation_id }}/access_tokens"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ github_jwt_token }}"
+      Accept: "application/vnd.github+json"
+    status_code: 201
+  register: access_token_result
+  delegate_to: localhost
+  no_log: true
+
+- name: Set access token fact
+  ansible.builtin.set_fact:
+    github_access_token: "{{ access_token_result.json.token }}"
+  no_log: true
+
+- name: Display authentication success
+  ansible.builtin.debug:
+    msg: "Successfully authenticated with GitHub App"

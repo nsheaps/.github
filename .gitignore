@@ -205,3 +205,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# act secrets file
+.secrets
+
+# Ansible vault password
+.vault_pass
+
+# Ansible vault files (but keep example)
+ansible/inventory/vault.yml

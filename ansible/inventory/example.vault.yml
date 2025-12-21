@@ -1,0 +1,15 @@
+---
+# Example Ansible Vault file
+# Copy this file to vault.yml and encrypt it with: ansible-vault encrypt vault.yml
+# Edit with: ansible-vault edit vault.yml
+
+# GitHub App credentials
+# Get these from your GitHub App settings:
+# https://github.com/organizations/YOUR_ORG/settings/apps/YOUR_APP
+
+vault_github_app_id: "123456"
+vault_github_installation_id: "12345678"
+vault_github_private_key: |
+  -----BEGIN RSA PRIVATE KEY-----
+  YOUR_PRIVATE_KEY_HERE
+  -----END RSA PRIVATE KEY-----

@@ -1,0 +1,33 @@
+---
+# Workflow synchronization role
+# Syncs workflow files from templates to target repositories
+
+- name: Check if required variables are defined
+  ansible.builtin.assert:
+    that:
+      - github_access_token is defined
+      - github_repo is defined
+      - workflows_to_sync is defined
+      - workflows_source_dir is defined
+    fail_msg: "Required variables for workflow sync are not defined"
+
+- name: Get repository information
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ github_repo }}"
+    method: GET
+    headers:
+      Authorization: "token {{ github_access_token }}"
+      Accept: "application/vnd.github+json"
+    status_code: 200
+  register: repo_info
+  delegate_to: localhost
+
+- name: Display repository being synced
+  ansible.builtin.debug:
+    msg: "Syncing workflows to {{ repo_info.json.full_name }}"
+
+- name: Sync workflow files
+  ansible.builtin.include_tasks: sync_workflow.yml
+  loop: "{{ workflows_to_sync }}"
+  loop_control:
+    loop_var: workflow_file

@@ -1,0 +1,14 @@
+# act configuration for local workflow testing
+# See: https://github.com/nektos/act
+
+# Use medium-sized runner image
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+
+# Bind the repository to /workspace
+--bind
+
+# Use built-in secrets file if exists
+--secret-file .secrets
+
+# Verbose output for debugging
+--verbose

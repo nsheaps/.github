@@ -1,0 +1,49 @@
+---
+# Sync individual workflow file to repository
+
+- name: Read workflow file content
+  ansible.builtin.slurp:
+    src: "{{ workflows_source_dir }}/{{ workflow_file }}"
+  register: workflow_content
+  delegate_to: localhost
+
+- name: Get current workflow from repository
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ github_repo }}/contents/.github/workflows/{{ workflow_file }}"
+    method: GET
+    headers:
+      Authorization: "token {{ github_access_token }}"
+      Accept: "application/vnd.github+json"
+    status_code: [200, 404]
+  register: current_workflow
+  delegate_to: localhost
+
+- name: Determine if workflow needs update
+  ansible.builtin.set_fact:
+    workflow_needs_update: >-
+      {{
+        current_workflow.status == 404 or
+        force_sync or
+        (current_workflow.json.content | b64decode) != (workflow_content.content | b64decode)
+      }}
+
+- name: Create or update workflow file
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ github_repo }}/contents/.github/workflows/{{ workflow_file }}"
+    method: PUT
+    headers:
+      Authorization: "token {{ github_access_token }}"
+      Accept: "application/vnd.github+json"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      message: "{{ 'Create' if current_workflow.status == 404 else 'Update' }} workflow {{ workflow_file }}"
+      content: "{{ workflow_content.content }}"
+      sha: "{{ current_workflow.json.sha | default(omit) }}"
+    status_code: [200, 201]
+  when: workflow_needs_update
+  delegate_to: localhost
+
+- name: Display sync result
+  ansible.builtin.debug:
+    msg: "{{ workflow_file }}: {{ 'Updated' if workflow_needs_update else 'No changes needed' }}"

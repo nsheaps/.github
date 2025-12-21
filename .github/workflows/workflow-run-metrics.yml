@@ -1,0 +1,147 @@
+name: Workflow Run Metrics Collection
+
+# This workflow demonstrates how to collect workflow run traces and metrics
+# and send them to observability platforms (Datadog, Prometheus, NewRelic)
+
+on:
+  workflow_run:
+    workflows: ["CI", "Validate Workflows", "Ansible Test"]
+    types:
+      - completed
+
+jobs:
+  collect-metrics:
+    name: Collect and Send Metrics
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Get workflow run details
+        id: workflow_details
+        run: |
+          echo "workflow_name=${{ github.event.workflow_run.name }}" >> $GITHUB_OUTPUT
+          echo "workflow_status=${{ github.event.workflow_run.conclusion }}" >> $GITHUB_OUTPUT
+          echo "workflow_duration=$(($(date -d "${{ github.event.workflow_run.updated_at }}" +%s) - $(date -d "${{ github.event.workflow_run.created_at }}" +%s)))" >> $GITHUB_OUTPUT
+          echo "workflow_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
+          echo "workflow_attempt=${{ github.event.workflow_run.run_attempt }}" >> $GITHUB_OUTPUT
+      
+      - name: Send metrics to Datadog
+        if: always()
+        env:
+          DD_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+          DD_SITE: ${{ secrets.DATADOG_SITE || 'datadoghq.com' }}
+        run: |
+          # Example: Send metrics to Datadog
+          # This requires DD_API_KEY to be set in repository secrets
+          
+          if [ -n "$DD_API_KEY" ]; then
+            WORKFLOW_NAME="${{ steps.workflow_details.outputs.workflow_name }}"
+            WORKFLOW_STATUS="${{ steps.workflow_details.outputs.workflow_status }}"
+            WORKFLOW_DURATION="${{ steps.workflow_details.outputs.workflow_duration }}"
+            
+            # Prepare metric data
+            TIMESTAMP=$(date +%s)
+            
+            curl -X POST "https://api.${DD_SITE}/api/v2/series" \
+              -H "Content-Type: application/json" \
+              -H "DD-API-KEY: ${DD_API_KEY}" \
+              -d @- <<EOF
+          {
+            "series": [
+              {
+                "metric": "github.workflow.duration",
+                "type": 1,
+                "points": [
+                  {
+                    "timestamp": ${TIMESTAMP},
+                    "value": ${WORKFLOW_DURATION}
+                  }
+                ],
+                "tags": [
+                  "workflow:${WORKFLOW_NAME}",
+                  "status:${WORKFLOW_STATUS}",
+                  "repository:${{ github.repository }}",
+                  "branch:${{ github.event.workflow_run.head_branch }}"
+                ]
+              }
+            ]
+          }
+          EOF
+          else
+            echo "Datadog API key not configured, skipping..."
+          fi
+      
+      - name: Send metrics to Prometheus Pushgateway
+        if: always()
+        env:
+          PROMETHEUS_PUSHGATEWAY_URL: ${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}
+        run: |
+          # Example: Push metrics to Prometheus Pushgateway
+          # This requires PROMETHEUS_PUSHGATEWAY_URL to be set in repository secrets
+          
+          if [ -n "$PROMETHEUS_PUSHGATEWAY_URL" ]; then
+            WORKFLOW_NAME="${{ steps.workflow_details.outputs.workflow_name }}"
+            WORKFLOW_STATUS="${{ steps.workflow_details.outputs.workflow_status }}"
+            WORKFLOW_DURATION="${{ steps.workflow_details.outputs.workflow_duration }}"
+            
+            # Convert status to numeric (1 for success, 0 for failure)
+            STATUS_VALUE=0
+            [ "$WORKFLOW_STATUS" = "success" ] && STATUS_VALUE=1
+            
+            cat <<EOF | curl --data-binary @- "${PROMETHEUS_PUSHGATEWAY_URL}/metrics/job/github_workflows/repository/${{ github.repository }}"
+          # TYPE github_workflow_duration_seconds gauge
+          # HELP github_workflow_duration_seconds Duration of GitHub workflow run
+          github_workflow_duration_seconds{workflow="${WORKFLOW_NAME}",status="${WORKFLOW_STATUS}",branch="${{ github.event.workflow_run.head_branch }}"} ${WORKFLOW_DURATION}
+          
+          # TYPE github_workflow_status gauge
+          # HELP github_workflow_status Status of GitHub workflow run (1=success, 0=failure)
+          github_workflow_status{workflow="${WORKFLOW_NAME}",branch="${{ github.event.workflow_run.head_branch }}"} ${STATUS_VALUE}
+          EOF
+          else
+            echo "Prometheus Pushgateway URL not configured, skipping..."
+          fi
+      
+      - name: Send metrics to New Relic
+        if: always()
+        env:
+          NEW_RELIC_API_KEY: ${{ secrets.NEW_RELIC_API_KEY }}
+          NEW_RELIC_ACCOUNT_ID: ${{ secrets.NEW_RELIC_ACCOUNT_ID }}
+        run: |
+          # Example: Send custom events to New Relic
+          # This requires NEW_RELIC_API_KEY and NEW_RELIC_ACCOUNT_ID to be set
+          
+          if [ -n "$NEW_RELIC_API_KEY" ] && [ -n "$NEW_RELIC_ACCOUNT_ID" ]; then
+            WORKFLOW_NAME="${{ steps.workflow_details.outputs.workflow_name }}"
+            WORKFLOW_STATUS="${{ steps.workflow_details.outputs.workflow_status }}"
+            WORKFLOW_DURATION="${{ steps.workflow_details.outputs.workflow_duration }}"
+            
+            curl -X POST "https://insights-collector.newrelic.com/v1/accounts/${NEW_RELIC_ACCOUNT_ID}/events" \
+              -H "Content-Type: application/json" \
+              -H "X-Insert-Key: ${NEW_RELIC_API_KEY}" \
+              -d @- <<EOF
+          [
+            {
+              "eventType": "GitHubWorkflowRun",
+              "workflow": "${WORKFLOW_NAME}",
+              "status": "${WORKFLOW_STATUS}",
+              "duration": ${WORKFLOW_DURATION},
+              "repository": "${{ github.repository }}",
+              "branch": "${{ github.event.workflow_run.head_branch }}",
+              "runId": "${{ steps.workflow_details.outputs.workflow_id }}",
+              "attempt": "${{ steps.workflow_details.outputs.workflow_attempt }}",
+              "timestamp": $(date +%s)000
+            }
+          ]
+          EOF
+          else
+            echo "New Relic credentials not configured, skipping..."
+          fi
+      
+      - name: Log metrics collection
+        if: always()
+        run: |
+          echo "Metrics collected for workflow: ${{ steps.workflow_details.outputs.workflow_name }}"
+          echo "Status: ${{ steps.workflow_details.outputs.workflow_status }}"
+          echo "Duration: ${{ steps.workflow_details.outputs.workflow_duration }} seconds"
+          echo "Run ID: ${{ steps.workflow_details.outputs.workflow_id }}"
+          echo "Attempt: ${{ steps.workflow_details.outputs.workflow_attempt }}"
