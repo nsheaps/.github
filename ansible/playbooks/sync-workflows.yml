@@ -2,17 +2,21 @@
 # Sync workflows to target repositories
 # Usage: ansible-playbook playbooks/sync-workflows.yml -i inventory/production.yml --ask-vault-pass
 
-- name: Sync workflows across organization repositories
-  hosts: target_repos
+- name: Authenticate with GitHub App
+  hosts: localhost
+  connection: local
   gather_facts: false
-  
+
   tasks:
     - name: Authenticate with GitHub App
       ansible.builtin.include_role:
         name: github_app_auth
-      run_once: true
-      delegate_to: localhost
-      
+
+- name: Sync workflows across organization repositories
+  hosts: target_repos
+  gather_facts: false
+
+  tasks:
     - name: Sync workflows to repository
       ansible.builtin.include_role:
         name: workflow_sync

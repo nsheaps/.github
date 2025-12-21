@@ -8,14 +8,14 @@ all:
     github_app_id: "{{ vault_github_app_id }}"
     github_installation_id: "{{ vault_github_installation_id }}"
     github_private_key: "{{ vault_github_private_key }}"
-    
+
     # Organization
     github_org: "nsheaps"
-    
+
     # Workflow sync settings
     workflows_source_dir: "{{ playbook_dir }}/../templates/workflows"
     force_sync: false
-    
+
   children:
     target_repos:
       hosts:

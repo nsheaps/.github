@@ -113,7 +113,8 @@ class TestTemplates:
             data = yaml.safe_load(f)
             assert data is not None
             assert "name" in data
-            assert "on" in data
+            # YAML parses 'on' as True, so we check for either
+            assert "on" in data or True in data
             assert "jobs" in data
 
 

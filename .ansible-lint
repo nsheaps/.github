@@ -1,0 +1,8 @@
+---
+# Ansible-lint configuration
+skip_list:
+  - var-naming[no-role-prefix]  # We use consistent naming without role prefix for simplicity
+
+warn_list:
+  - yaml[trailing-spaces]
+  - yaml[line-length]
