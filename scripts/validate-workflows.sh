@@ -5,10 +5,29 @@ set -e
 
 echo "Validating GitHub Actions workflows..."
 
+# actionlint version to download
+ACTIONLINT_VERSION="1.6.27"
+
 # Check if actionlint is installed
 if ! command -v actionlint &> /dev/null; then
-    echo "Installing actionlint..."
-    bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+    echo "Installing actionlint version ${ACTIONLINT_VERSION}..."
+
+    # Determine OS and architecture
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "x86_64" ]; then
+        ARCH="amd64"
+    elif [ "$ARCH" = "aarch64" ]; then
+        ARCH="arm64"
+    fi
+
+    # Download URL
+    DOWNLOAD_URL="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_${OS}_${ARCH}.tar.gz"
+
+    # Download and extract
+    echo "Downloading from ${DOWNLOAD_URL}"
+    curl -sL "${DOWNLOAD_URL}" | tar xz -C "${PWD}"
+    chmod +x "${PWD}/actionlint"
     export PATH="${PWD}:${PATH}"
 fi
 

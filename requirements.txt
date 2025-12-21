@@ -1,6 +1,6 @@
 # Ansible and dependencies
-ansible>=2.10.0,<3.0.0
-ansible-core>=2.12.0
+ansible>=2.10.0
+ansible-core>=2.12.0,<2.18.0
 ansible-lint>=6.0.0
 
 # GitHub API interaction

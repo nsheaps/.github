@@ -38,11 +38,12 @@ jobs:
             WORKFLOW_NAME="${{ steps.workflow_details.outputs.workflow_name }}"
             WORKFLOW_STATUS="${{ steps.workflow_details.outputs.workflow_status }}"
             WORKFLOW_DURATION="${{ steps.workflow_details.outputs.workflow_duration }}"
-            
+
             # Prepare metric data
             TIMESTAMP=$(date +%s)
-            
-            curl -X POST "https://api.${DD_SITE}/api/v2/series" \
+
+            # Send metrics with error handling
+            HTTP_CODE=$(curl -w "%{http_code}" -o /tmp/dd_response.json -X POST "https://api.${DD_SITE}/api/v2/series" \
               -H "Content-Type: application/json" \
               -H "DD-API-KEY: ${DD_API_KEY}" \
               -d @- <<EOF
@@ -67,6 +68,14 @@ jobs:
             ]
           }
           EOF
+            )
+
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "Successfully sent metrics to Datadog (HTTP ${HTTP_CODE})"
+            else
+              echo "Failed to send metrics to Datadog (HTTP ${HTTP_CODE})"
+              cat /tmp/dd_response.json || true
+            fi
           else
             echo "Datadog API key not configured, skipping..."
           fi
@@ -87,16 +96,25 @@ jobs:
             # Convert status to numeric (1 for success, 0 for failure)
             STATUS_VALUE=0
             [ "$WORKFLOW_STATUS" = "success" ] && STATUS_VALUE=1
-            
-            cat <<EOF | curl --data-binary @- "${PROMETHEUS_PUSHGATEWAY_URL}/metrics/job/github_workflows/repository/${{ github.repository }}"
+
+            # Send metrics with error handling
+            HTTP_CODE=$(cat <<EOF | curl -w "%{http_code}" -o /tmp/prom_response.txt --data-binary @- "${PROMETHEUS_PUSHGATEWAY_URL}/metrics/job/github_workflows/repository/${{ github.repository }}"
           # TYPE github_workflow_duration_seconds gauge
           # HELP github_workflow_duration_seconds Duration of GitHub workflow run
           github_workflow_duration_seconds{workflow="${WORKFLOW_NAME}",status="${WORKFLOW_STATUS}",branch="${{ github.event.workflow_run.head_branch }}"} ${WORKFLOW_DURATION}
-          
+
           # TYPE github_workflow_status gauge
           # HELP github_workflow_status Status of GitHub workflow run (1=success, 0=failure)
           github_workflow_status{workflow="${WORKFLOW_NAME}",branch="${{ github.event.workflow_run.head_branch }}"} ${STATUS_VALUE}
           EOF
+            )
+
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "Successfully sent metrics to Prometheus (HTTP ${HTTP_CODE})"
+            else
+              echo "Failed to send metrics to Prometheus (HTTP ${HTTP_CODE})"
+              cat /tmp/prom_response.txt || true
+            fi
           else
             echo "Prometheus Pushgateway URL not configured, skipping..."
           fi
@@ -114,8 +132,9 @@ jobs:
             WORKFLOW_NAME="${{ steps.workflow_details.outputs.workflow_name }}"
             WORKFLOW_STATUS="${{ steps.workflow_details.outputs.workflow_status }}"
             WORKFLOW_DURATION="${{ steps.workflow_details.outputs.workflow_duration }}"
-            
-            curl -X POST "https://insights-collector.newrelic.com/v1/accounts/${NEW_RELIC_ACCOUNT_ID}/events" \
+
+            # Send metrics with error handling
+            HTTP_CODE=$(curl -w "%{http_code}" -o /tmp/nr_response.json -X POST "https://insights-collector.newrelic.com/v1/accounts/${NEW_RELIC_ACCOUNT_ID}/events" \
               -H "Content-Type: application/json" \
               -H "X-Insert-Key: ${NEW_RELIC_API_KEY}" \
               -d @- <<EOF
@@ -133,6 +152,14 @@ jobs:
             }
           ]
           EOF
+            )
+
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "Successfully sent metrics to New Relic (HTTP ${HTTP_CODE})"
+            else
+              echo "Failed to send metrics to New Relic (HTTP ${HTTP_CODE})"
+              cat /tmp/nr_response.json || true
+            fi
           else
             echo "New Relic credentials not configured, skipping..."
           fi
