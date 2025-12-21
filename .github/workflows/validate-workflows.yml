@@ -11,10 +11,15 @@ on:
       - 'ansible/templates/workflows/**'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     name: Validate Workflow Syntax
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       

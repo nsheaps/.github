@@ -9,10 +9,15 @@ on:
       - 'ansible/**'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   syntax-check:
     name: Ansible Syntax Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       
