@@ -23,6 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup environment
+        uses: ./.github/actions/setup
+
       - name: Sync stars to GitHub lists
         uses: ./.github/actions/sync-stars-push
         with:
@@ -34,6 +37,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
 
       - name: Fetch stars from GitHub
         uses: ./.github/actions/sync-stars-pull

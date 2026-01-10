@@ -13,14 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup mise
-        uses: jdx/mise-action@v2
-
-      - name: Enable corepack
-        run: corepack enable
-
-      - name: Install dependencies
-        run: yarn install
+      - name: Setup environment
+        uses: ./.github/actions/setup
 
       - name: Check (lint + typecheck)
         run: yarn check
