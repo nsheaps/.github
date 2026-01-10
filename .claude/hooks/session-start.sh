@@ -29,8 +29,8 @@ mise install --yes
 eval "$(mise activate bash)"
 
 # Enable corepack for yarn
-echo "Enabling corepack..."
-corepack enable
+echo "Corepack setup..."
+corepack enable && corepack install
 
 # Install dependencies
 echo "Installing yarn dependencies..."
