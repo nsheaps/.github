@@ -5,14 +5,24 @@ on:
     paths:
       - '.github/stars.yaml'
   workflow_dispatch:
+    inputs:
+      direction:
+        description: 'Sync direction'
+        required: true
+        default: 'push'
+        type: choice
+        options:
+          - push   # YAML -> GitHub Lists
+          - pull   # GitHub Lists -> YAML
 
 jobs:
-  sync:
+  push-to-github:
+    if: github.event_name == 'push' || inputs.direction == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Sync stars to lists
+      - name: Sync stars to GitHub lists
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.STARS_TOKEN }}
@@ -97,3 +107,112 @@ jobs:
             }
 
             console.log('\nSync complete!');
+
+  pull-from-github:
+    if: inputs.direction == 'pull'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch stars from GitHub and update YAML
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.STARS_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const yaml = require('js-yaml');
+
+            // Fetch all starred repos
+            console.log('Fetching starred repos...');
+            const starred = await github.paginate('GET /user/starred', {
+              per_page: 100,
+              headers: { accept: 'application/vnd.github.star+json' }
+            });
+            console.log(`Found ${starred.length} starred repos`);
+
+            // Fetch all lists
+            console.log('Fetching star lists...');
+            const { data: lists } = await github.request('GET /user/starred/lists');
+            console.log(`Found ${lists.length} lists`);
+
+            // Build repo -> tags mapping
+            const repoTags = {};
+            for (const item of starred) {
+              const repo = item.repo || item;
+              repoTags[repo.full_name] = [];
+            }
+
+            // Fetch repos in each list
+            for (const list of lists) {
+              console.log(`Fetching repos in list: ${list.name}`);
+              const { data: listRepos } = await github.request(
+                'GET /user/starred/lists/{list_id}/repositories',
+                { list_id: list.id }
+              );
+              for (const repo of listRepos) {
+                if (repoTags[repo.full_name]) {
+                  repoTags[repo.full_name].push(list.name);
+                }
+              }
+            }
+
+            // Build YAML structure
+            const stars = [];
+
+            // Group by tags for cleaner output
+            const byTags = {};
+            const untagged = [];
+
+            for (const [repo, tags] of Object.entries(repoTags)) {
+              if (tags.length === 0) {
+                untagged.push(repo);
+              } else {
+                const key = tags.sort().join(',');
+                if (!byTags[key]) byTags[key] = [];
+                byTags[key].push(repo);
+              }
+            }
+
+            // Add tagged repos first, grouped by tag combination
+            for (const [tagKey, repos] of Object.entries(byTags).sort()) {
+              const tags = tagKey.split(',');
+              for (const repo of repos.sort()) {
+                stars.push({ [repo]: { tags } });
+              }
+            }
+
+            // Add untagged repos at the end
+            for (const repo of untagged.sort()) {
+              stars.push(repo);
+            }
+
+            // Write YAML
+            const content = `# GitHub Stars List Configuration
+# Auto-generated from GitHub API
+# Format:
+#   - "owner/repo"                    # Just starred, no lists
+#   - "owner/repo":
+#       tags: [list1, list2]          # Assign to these lists
+
+stars:
+${stars.map(entry => {
+  if (typeof entry === 'string') {
+    return `  - "${entry}"`;
+  } else {
+    const repo = Object.keys(entry)[0];
+    const tags = entry[repo].tags;
+    return `  - "${repo}":\n      tags: [${tags.join(', ')}]`;
+  }
+}).join('\n')}
+`;
+
+            fs.writeFileSync('.github/stars.yaml', content);
+            console.log(`\nWrote ${stars.length} repos to stars.yaml`);
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/stars.yaml
+          git diff --staged --quiet || git commit -m "Sync stars from GitHub API"
+          git push
