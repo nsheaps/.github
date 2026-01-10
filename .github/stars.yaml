@@ -1,0 +1,20 @@
+# GitHub Stars List Configuration
+# Format:
+#   - "owner/repo"                    # Just starred, no lists
+#   - "owner/repo":
+#       tags: [list1, list2]          # Assign to these lists
+
+stars:
+  # AI & Machine Learning
+  - "anthropics/anthropic-sdk-python":
+      tags: [ai]
+  - "openai/openai-python":
+      tags: [ai]
+
+  # Homelab
+  - "awesome-selfhosted/awesome-selfhosted":
+      tags: [homelab]
+
+  # Add your starred repos here...
+  # - "owner/repo":
+  #     tags: [ai, homelab]

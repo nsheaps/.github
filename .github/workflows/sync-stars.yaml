@@ -1,0 +1,99 @@
+name: Sync Stars Lists
+
+on:
+  push:
+    paths:
+      - '.github/stars.yaml'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync stars to lists
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.STARS_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const yaml = require('js-yaml');
+
+            // Parse stars.yaml
+            const config = yaml.load(fs.readFileSync('.github/stars.yaml', 'utf8'));
+            const stars = config.stars || [];
+
+            // Get existing lists
+            const { data: lists } = await github.request('GET /user/starred/lists');
+            const listsByName = Object.fromEntries(lists.map(l => [l.name, l]));
+
+            // Build desired state: { listName: [repos] }
+            const desired = {};
+            for (const entry of stars) {
+              let repo, tags;
+              if (typeof entry === 'string') {
+                repo = entry;
+                tags = [];
+              } else {
+                repo = Object.keys(entry)[0];
+                tags = entry[repo]?.tags || [];
+              }
+
+              for (const tag of tags) {
+                if (!desired[tag]) desired[tag] = [];
+                desired[tag].push(repo);
+              }
+            }
+
+            // Sync each list
+            for (const [listName, repos] of Object.entries(desired)) {
+              console.log(`\nProcessing list: ${listName}`);
+
+              // Create list if it doesn't exist
+              let list = listsByName[listName];
+              if (!list) {
+                console.log(`  Creating list: ${listName}`);
+                const { data } = await github.request('POST /user/starred/lists', {
+                  name: listName
+                });
+                list = data;
+              }
+
+              // Get current repos in list
+              const { data: currentRepos } = await github.request(
+                'GET /user/starred/lists/{list_id}/repositories',
+                { list_id: list.id }
+              );
+              const currentSet = new Set(currentRepos.map(r => r.full_name));
+              const desiredSet = new Set(repos);
+
+              // Add missing repos
+              for (const repo of repos) {
+                if (!currentSet.has(repo)) {
+                  const [owner, name] = repo.split('/');
+                  console.log(`  Adding: ${repo}`);
+                  try {
+                    await github.request(
+                      'PUT /user/starred/lists/{list_id}/repositories/{owner}/{repo}',
+                      { list_id: list.id, owner, repo: name }
+                    );
+                  } catch (e) {
+                    console.log(`  Warning: Could not add ${repo} - ${e.message}`);
+                  }
+                }
+              }
+
+              // Remove repos no longer in list
+              for (const repo of currentRepos) {
+                if (!desiredSet.has(repo.full_name)) {
+                  console.log(`  Removing: ${repo.full_name}`);
+                  await github.request(
+                    'DELETE /user/starred/lists/{list_id}/repositories/{owner}/{repo}',
+                    { list_id: list.id, owner: repo.owner.login, repo: repo.name }
+                  );
+                }
+              }
+            }
+
+            console.log('\nSync complete!');
