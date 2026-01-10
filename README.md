@@ -1,32 +1,49 @@
-# GitHub Stars List Manager
+# .github
 
-Manage your GitHub star lists via a YAML config file.
+Personal GitHub configuration repository with reusable actions and automation.
 
-## Setup
+## Features
 
-1. Create a Personal Access Token with `repo` and `user` scopes
-2. Add it as a repository secret named `STARS_TOKEN`
-3. Edit `.github/stars.yaml` to define your starred repos and lists
+- **[Stars List Manager](docs/stars-manager.md)** - Manage GitHub star lists via YAML config with bidirectional sync
 
-## Configuration
+## Development
 
-Edit `.github/stars.yaml`:
+This repo uses a monorepo structure with:
 
-```yaml
-stars:
-  # Just starred (no list assignment)
-  - "owner/repo"
+- **mise** - Tool version management (node, gh)
+- **yarn** - Package management with workspaces
+- **nx** - Task orchestration and caching
 
-  # Assign to lists
-  - "anthropics/claude-code":
-      tags: [ai, tools]
+### Setup
 
-  - "awesome-selfhosted/awesome-selfhosted":
-      tags: [homelab]
+```bash
+# Install mise (if not already installed)
+curl https://mise.run | sh
+
+# Install tools and dependencies
+mise install
+yarn install
 ```
 
-## Usage
+### Commands
 
-The workflow runs automatically when you push changes to `.github/stars.yaml`, or trigger it manually from the Actions tab.
+```bash
+yarn build   # Build all projects
+yarn test    # Run all tests
+yarn check   # Run linting and type checking
+yarn fix     # Auto-fix linting issues
+```
 
-Lists are created automatically if they don't exist. Repos are added/removed to match your config.
+### Project Structure
+
+```
+.github/
+├── actions/
+│   ├── sync-stars-push/    # Push YAML to GitHub lists
+│   └── sync-stars-pull/    # Pull GitHub lists to YAML
+├── workflows/
+│   └── sync-stars.yaml     # Stars sync workflow
+├── stars.yaml              # Stars configuration
+docs/
+├── stars-manager.md        # Stars manager documentation
+```

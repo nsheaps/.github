@@ -1,0 +1,17 @@
+{
+  "name": "@nsheaps/sync-stars-pull",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo 'No tests yet'",
+    "check": "tsc --noEmit && eslint src/",
+    "lint": "eslint src/",
+    "fix": "eslint src/ --fix"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}
