@@ -48,6 +48,6 @@ files:
   #     - nsheaps/example-repo-1
   #     - nsheaps/example-repo-2
 
-# Placeholder (remove when adding real files)
-  ".github/.placeholder":
-    repos: []
+# Automation notice - synced to all managed repos
+  ".github/NOTICE.md":
+    repos: []  # Add target repos here, e.g.: nsheaps/repo-name
