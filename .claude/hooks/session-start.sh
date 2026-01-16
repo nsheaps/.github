@@ -20,8 +20,8 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$CLAUDE_ENV_FILE"
 
 cd "$CLAUDE_PROJECT_DIR"
 
-# Trust and install mise tools
-echo "Installing mise tools (node, gh)..."
+# Trust and install mise tools (including just, node, gh)
+echo "Installing mise tools..."
 mise trust --yes
 mise install --yes
 
@@ -29,7 +29,7 @@ mise install --yes
 eval "$(mise activate bash)"
 
 # Enable corepack for yarn
-echo "Corepack setup..."
+echo "Setting up corepack..."
 corepack enable && corepack install
 
 # Install dependencies
@@ -37,3 +37,4 @@ echo "Installing yarn dependencies..."
 yarn install
 
 echo "Environment setup complete!"
+echo "Run 'just' to see available commands"

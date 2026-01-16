@@ -13,14 +13,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup environment
-        uses: ./.github/actions/setup
+      - name: Setup mise
+        uses: jdx/mise-action@v2
 
-      - name: Check (lint + typecheck)
-        run: yarn check
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".mise.toml"
 
-      - name: Build
-        run: yarn build
+      - name: Enable corepack
+        run: |
+          corepack enable
+          corepack install
 
-      - name: Test
-        run: yarn test
+      - name: Install dependencies
+        run: yarn install
+
+      # Use justfile for consistent local/CI behavior
+      - name: Run checks
+        run: just check

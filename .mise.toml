@@ -1,6 +1,7 @@
 [tools]
 node = "22"
 github-cli = "latest"
+just = "latest"
 
 [settings]
 experimental = true
