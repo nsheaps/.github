@@ -1,12 +1,14 @@
 ---
 # File synchronization role defaults
 
-# Source directory for template files (relative to playbook)
-templates_source_dir: "{{ playbook_dir }}/../templates"
+# Source directory for template files
+templates_dir: "{{ playbook_dir }}/../templates"
 
-# Default sync behavior
+# Organization that owns the .github repo (for PR creation)
+github_org: "nsheaps"
+
+# Sync behavior
 force_sync: false
-default_commit_message_prefix: "[sync]"
-
-# Dry run mode (check only, no changes)
 dry_run: false
+preserve_changes: true
+commit_prefix: "[sync]"

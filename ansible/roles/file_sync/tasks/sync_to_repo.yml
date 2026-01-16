@@ -1,0 +1,179 @@
+---
+# Sync a single file to a single repository
+# Handles conflict detection and PR creation for preserved changes
+
+- name: Read source file content
+  ansible.builtin.slurp:
+    src: "{{ templates_dir }}/{{ sync_file.source }}"
+  register: source_content
+  delegate_to: localhost
+
+- name: Get current file from target repository
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ target_repo }}/contents/{{ sync_file.dest }}"
+    method: GET
+    headers:
+      Authorization: "token {{ github_access_token }}"
+      Accept: "application/vnd.github+json"
+    status_code: [200, 404]
+  register: target_file
+  delegate_to: localhost
+
+- name: Decode file contents for comparison
+  ansible.builtin.set_fact:
+    source_decoded: "{{ source_content.content | b64decode }}"
+    target_decoded: "{{ (target_file.json.content | default('') | b64decode) if target_file.status == 200 else '' }}"
+    target_exists: "{{ target_file.status == 200 }}"
+
+- name: Check if sync is needed
+  ansible.builtin.set_fact:
+    needs_sync: "{{ force_sync or source_decoded != target_decoded }}"
+    target_has_changes: "{{ target_exists and source_decoded != target_decoded }}"
+
+- name: Display status (dry run)
+  ansible.builtin.debug:
+    msg: >-
+      {{ target_repo }}/{{ sync_file.dest }}:
+      {{ 'Would create' if not target_exists
+         else 'Would update (target has changes - PR will be created)' if target_has_changes
+         else 'No changes needed' }}
+  when: dry_run
+
+# Preserve target changes by creating PR in .github repo
+- name: Create PR to preserve target changes
+  when:
+    - needs_sync
+    - target_has_changes
+    - preserve_changes | default(true)
+    - not dry_run
+  block:
+    - name: Generate branch name for preservation PR
+      ansible.builtin.set_fact:
+        repo_slug: "{{ target_repo | replace('/', '-') }}"
+        file_slug: "{{ sync_file.dest | replace('/', '-') | replace('.', '-') }}"
+
+    - name: Set preservation branch name
+      ansible.builtin.set_fact:
+        preservation_branch: "preserve/{{ repo_slug }}/{{ file_slug }}-{{ ansible_date_time.epoch }}"
+
+    - name: Get default branch of .github repo
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ github_org }}/.github"
+        method: GET
+        headers:
+          Authorization: "token {{ github_access_token }}"
+          Accept: "application/vnd.github+json"
+      register: github_repo_info
+      delegate_to: localhost
+
+    - name: Get main branch SHA
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ github_org }}/.github/git/ref/heads/{{ github_repo_info.json.default_branch }}"
+        method: GET
+        headers:
+          Authorization: "token {{ github_access_token }}"
+          Accept: "application/vnd.github+json"
+      register: main_branch_ref
+      delegate_to: localhost
+
+    - name: Create preservation branch
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ github_org }}/.github/git/refs"
+        method: POST
+        headers:
+          Authorization: "token {{ github_access_token }}"
+          Accept: "application/vnd.github+json"
+        body_format: json
+        body:
+          ref: "refs/heads/{{ preservation_branch }}"
+          sha: "{{ main_branch_ref.json.object.sha }}"
+        status_code: [201]
+      register: new_branch
+      delegate_to: localhost
+
+    - name: Get current template file in .github repo
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ github_org }}/.github/contents/ansible/templates/{{ sync_file.source }}"
+        method: GET
+        headers:
+          Authorization: "token {{ github_access_token }}"
+          Accept: "application/vnd.github+json"
+        status_code: [200, 404]
+      register: template_file
+      delegate_to: localhost
+
+    - name: Update template with target's content
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ github_org }}/.github/contents/ansible/templates/{{ sync_file.source }}"
+        method: PUT
+        headers:
+          Authorization: "token {{ github_access_token }}"
+          Accept: "application/vnd.github+json"
+        body_format: json
+        body:
+          message: "Preserve changes from {{ target_repo }}"
+          content: "{{ target_file.json.content }}"
+          sha: "{{ template_file.json.sha | default(omit) }}"
+          branch: "{{ preservation_branch }}"
+        status_code: [200, 201]
+      delegate_to: localhost
+
+    - name: Create pull request to preserve changes
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/{{ github_org }}/.github/pulls"
+        method: POST
+        headers:
+          Authorization: "token {{ github_access_token }}"
+          Accept: "application/vnd.github+json"
+        body_format: json
+        body:
+          title: "Preserve changes from {{ target_repo }}: {{ sync_file.dest }}"
+          body: |
+            ## Changes detected in target repository
+
+            The file `{{ sync_file.dest }}` in `{{ target_repo }}` had modifications that differ from the central configuration.
+
+            This PR preserves those changes so they can be reviewed and potentially merged into the central config.
+
+            **Source file:** `ansible/templates/{{ sync_file.source }}`
+            **Target repo:** `{{ target_repo }}`
+            **Target path:** `{{ sync_file.dest }}`
+
+            ---
+            *Auto-generated by file sync workflow*
+          head: "{{ preservation_branch }}"
+          base: "{{ github_repo_info.json.default_branch }}"
+        status_code: [201]
+      register: preservation_pr
+      delegate_to: localhost
+
+    - name: Display preservation PR
+      ansible.builtin.debug:
+        msg: "Created PR to preserve changes: {{ preservation_pr.json.html_url }}"
+
+# Always sync (central trumps target)
+- name: Create or update file in target repository
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ target_repo }}/contents/{{ sync_file.dest }}"
+    method: PUT
+    headers:
+      Authorization: "token {{ github_access_token }}"
+      Accept: "application/vnd.github+json"
+    body_format: json
+    body:
+      message: "{{ commit_prefix }} {{ 'Create' if not target_exists else 'Update' }} {{ sync_file.dest }}"
+      content: "{{ source_content.content }}"
+      sha: "{{ target_file.json.sha | default(omit) }}"
+    status_code: [200, 201]
+  when:
+    - needs_sync
+    - not dry_run
+  delegate_to: localhost
+  register: sync_result
+
+- name: Display sync result
+  ansible.builtin.debug:
+    msg: "{{ target_repo }}/{{ sync_file.dest }}: {{ 'Created' if not target_exists else 'Updated' }}"
+  when:
+    - needs_sync
+    - not dry_run

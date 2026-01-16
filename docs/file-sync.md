@@ -1,80 +1,53 @@
 # Ansible File Sync
 
-Synchronize files across organization repositories using Ansible. This allows you to maintain consistency for configuration files, workflows, and other assets across multiple repositories.
+Synchronize files across organization repositories using Ansible. Maintains consistency for configuration files, workflows, and other assets.
 
 ## Overview
 
-The file sync system uses Ansible to:
-- **Create** files that don't exist in target repositories
-- **Update** files that differ from the source
-- **Delete** files that should be removed (`state: absent`)
-
-All operations are idempotent and use the GitHub Contents API.
+The file sync system:
+- **Syncs** files from `.github` repo to target repositories
+- **Central repo trumps** - your `.github` config is always authoritative
+- **Preserves changes** - if a target repo has modifications, opens a PR in `.github` to preserve them
 
 ## Configuration
 
-### Sync Tasks
+### File Mapping
 
-Define sync tasks in `ansible/config/sync-tasks.yml`:
+Define files to sync in `ansible/config/sync-files.yml`:
 
 ```yaml
----
 defaults:
-  state: present
-  force_sync: false
+  preserve_target_changes: true
   commit_message_prefix: "[sync]"
 
-sync_tasks:
-  # Sync a workflow to multiple repos
-  - name: "Sync shared CI workflow"
-    source: "workflows/shared-ci.yml"
-    dest: ".github/workflows/ci.yml"
-    state: present
+files:
+  # Key = source file path (relative to ansible/templates/)
+  # Value = { dest (optional), repos: [list] }
+
+  # Simple: dest path matches source path
+  ".github/workflows/ci.yml":
     repos:
       - nsheaps/repo-a
       - nsheaps/repo-b
-      - nsheaps/repo-c
 
-  # Different file to different repos
-  - name: "Sync renovate config"
-    source: "config/renovate.json"
+  # Extended: different dest path
+  "configs/renovate-org.json":
     dest: "renovate.json"
-    state: present
     repos:
-      - nsheaps/repo-a
-      - nsheaps/repo-d  # Different repo set
-
-  # Remove a deprecated file
-  - name: "Remove old security workflow"
-    dest: ".github/workflows/deprecated-security.yml"
-    state: absent  # No source needed for deletion
-    repos:
-      - nsheaps/repo-b
+      - nsheaps/repo-c
 ```
 
-### Task Properties
-
-| Property | Required | Description |
-|----------|----------|-------------|
-| `name` | Yes | Human-readable task name |
-| `source` | Yes* | Path to source file (relative to `ansible/templates/`) |
-| `dest` | Yes | Destination path in target repositories |
-| `repos` | Yes | List of target repositories (`owner/repo` format) |
-| `state` | No | `present` (default) or `absent` |
-| `commit_message` | No | Custom commit message |
-
-\* `source` is required when `state: present`, not needed for `state: absent`
-
-### Source Templates
+### Source Files
 
 Place source files in `ansible/templates/`:
 
 ```
 ansible/templates/
-├── workflows/
-│   └── shared-ci.yml
-├── config/
-│   └── renovate.json
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── configs/
+│   └── renovate-org.json
 └── CODEOWNERS
 ```
 
@@ -82,49 +55,44 @@ ansible/templates/
 
 ### Local Development
 
-Set your GitHub token:
-
 ```bash
-export GITHUB_TOKEN=ghp_xxx  # Personal access token with repo scope
-```
+# Set your GitHub token
+export GITHUB_TOKEN=ghp_xxx
 
-Preview changes (dry run):
-
-```bash
+# Preview changes (dry run)
 mise run sync-files -- --dry-run
-```
 
-Apply changes:
-
-```bash
+# Apply changes
 mise run sync-files
-```
 
-Force sync (ignore unchanged files):
-
-```bash
+# Force sync (ignore unchanged)
 mise run sync-files -- --force
 ```
 
 ### CI/CD
 
-The sync can be triggered automatically when templates change, or manually via workflow_dispatch.
+The sync runs automatically when:
+- Files in `ansible/config/sync-files.yml` change
+- Files in `ansible/templates/` change
 
-For CI, configure GitHub App authentication:
+Manual trigger via workflow_dispatch is also available.
 
-1. Create a GitHub App with `contents: write` permission
-2. Install it on target repositories
-3. Add secrets to the `.github` repository:
-   - `SYNC_APP_ID`
-   - `SYNC_INSTALLATION_ID`
-   - `SYNC_PRIVATE_KEY`
-4. Set repository variable `SYNC_APP_CONFIGURED=true`
+## Conflict Handling
+
+When syncing, if a target repository has modifications:
+
+1. **PR is created** in `.github` repo to preserve the target's changes
+2. **Target is updated** with central config (central always wins)
+3. **Review the PR** to decide if changes should be merged into central config
+
+This ensures:
+- Central config is authoritative
+- No changes are lost
+- Modifications can be reviewed and potentially adopted
 
 ## Authentication
 
 ### Personal Access Token (Local)
-
-For local development, use a personal access token:
 
 1. Create token at https://github.com/settings/tokens
 2. Required scopes: `repo`, `read:org`
@@ -132,66 +100,42 @@ For local development, use a personal access token:
 
 ### GitHub App (CI)
 
-For CI, use a GitHub App for better security:
+1. Create a GitHub App with `contents: write` permission
+2. Install on target repositories AND the `.github` repo
+3. Add secrets:
+   - `SYNC_APP_ID`
+   - `SYNC_INSTALLATION_ID`
+   - `SYNC_PRIVATE_KEY`
+4. Set `SYNC_APP_CONFIGURED=true` repository variable
 
-1. Create a GitHub App in your organization
-2. Set permissions: `Contents: Read and write`
-3. Install on target repositories
-4. Store credentials in repository secrets
+## Validation
 
-## Architecture
+```bash
+# Validate config syntax
+mise run validate-sync-config
 
-### Roles
-
-**`github_auth`** - Handles authentication
-- Supports both personal tokens and GitHub App
-- Auto-detects method based on available credentials
-
-**`file_sync`** - Performs file operations
-- Routes to `sync_file.yml` or `delete_file.yml` based on state
-- Checks current file state before making changes
-- Commits directly to default branch
-
-### Playbook Flow
-
-1. Authenticate with GitHub
-2. Load sync tasks from config
-3. For each task:
-   - For each repository:
-     - Check current file state
-     - Create/update/delete as needed
-     - Report result
+# Lint Ansible code
+mise run ansible-lint
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-**"GITHUB_TOKEN environment variable not set"**
-- Set `export GITHUB_TOKEN=ghp_xxx` for local development
+**"GITHUB_TOKEN not set"**
+- Set `export GITHUB_TOKEN=ghp_xxx` for local dev
 - For CI, ensure secrets are configured
 
-**"404 Not Found" for repository**
-- Verify the repository exists
-- Check token has access to the repository
-- Ensure repository name is correct (`owner/repo` format)
+**"404 Not Found"**
+- Verify repository exists and token has access
+- Check `owner/repo` format is correct
 
 **"422 Unprocessable Entity"**
-- Usually means the file path is invalid
-- Check for special characters in path
+- Usually invalid file path
+- Check for special characters
 
 ### Debug Mode
 
-Run with verbose output:
-
 ```bash
 mise run sync-files -- -v
-```
-
-### Validation
-
-Validate configuration before running:
-
-```bash
-mise run validate-sync-config
-mise run ansible-lint
 ```

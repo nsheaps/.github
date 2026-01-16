@@ -1,23 +1,26 @@
 ---
 # File synchronization role
-# Processes a single sync task across its target repositories
+# Syncs a single file to multiple target repositories
+# Central repo trumps target; preserves target changes via PR
 
 - name: Validate required variables
   ansible.builtin.assert:
     that:
       - github_access_token is defined
-      - sync_task is defined
-      - sync_task.dest is defined
-      - sync_task.repos is defined
-      - sync_task.repos | length > 0
-    fail_msg: "Missing required variables for file sync task: {{ sync_task.name | default('unnamed') }}"
+      - sync_file is defined
+      - sync_file.source is defined
+      - sync_file.dest is defined
+      - sync_file.repos is defined
+      - sync_file.repos | length > 0
+    fail_msg: "Missing required variables for file sync"
 
-- name: Display sync task
+- name: Display sync operation
   ansible.builtin.debug:
-    msg: "Processing: {{ sync_task.name }} ({{ sync_task.state | default('present') }}) -> {{ sync_task.repos | length }} repos"
+    msg: "Syncing {{ sync_file.source }} → {{ sync_file.dest }} to {{ sync_file.repos | length }} repo(s)"
 
-- name: Route to appropriate task handler
-  ansible.builtin.include_tasks: "{{ 'delete_file.yml' if (sync_task.state | default('present')) == 'absent' else 'sync_file.yml' }}"
-  loop: "{{ sync_task.repos }}"
+- name: Process each target repository
+  ansible.builtin.include_tasks: sync_to_repo.yml
+  loop: "{{ sync_file.repos }}"
   loop_control:
     loop_var: target_repo
+    label: "{{ target_repo }}"

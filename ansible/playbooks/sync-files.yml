@@ -1,60 +1,101 @@
 ---
 # File Synchronization Playbook
 #
-# Syncs files to target repositories based on config/sync-tasks.yml
+# Syncs files from .github repo to target repositories.
+# Central repository always trumps target repos.
+# If target has modifications, opens PR in .github to preserve changes.
 #
 # Usage:
-#   Local (with personal token):
-#     export GITHUB_TOKEN=ghp_xxx
-#     just sync-files [--dry-run] [--force]
-#
-#   CI (with GitHub App):
-#     ansible-playbook playbooks/sync-files.yml -e @inventory/vault.yml
-
-- name: Authenticate with GitHub
-  hosts: localhost
-  connection: local
-  gather_facts: false
-  vars_files:
-    - "{{ playbook_dir }}/../config/sync-tasks.yml"
-
-  tasks:
-    - name: Authenticate with GitHub
-      ansible.builtin.include_role:
-        name: github_auth
+#   Local: export GITHUB_TOKEN=ghp_xxx && mise run sync-files
+#   CI: Runs automatically via GitHub Actions
 
 - name: Sync files to repositories
   hosts: localhost
   connection: local
   gather_facts: false
   vars_files:
-    - "{{ playbook_dir }}/../config/sync-tasks.yml"
+    - "{{ playbook_dir }}/../config/sync-files.yml"
+  vars:
+    templates_dir: "{{ playbook_dir }}/../templates"
+    dry_run: "{{ dry_run | default(false) }}"
+    force_sync: "{{ force_sync | default(false) }}"
+    preserve_changes: "{{ defaults.preserve_target_changes | default(true) }}"
+    commit_prefix: "{{ defaults.commit_message_prefix | default('[sync]') }}"
 
   tasks:
+    - name: Authenticate with GitHub
+      ansible.builtin.include_role:
+        name: github_auth
+
     - name: Display configuration summary
       ansible.builtin.debug:
         msg: |
           File Sync Configuration:
-            Tasks: {{ sync_tasks | length }}
-            Dry run: {{ dry_run | default(false) }}
-            Force sync: {{ force_sync | default(false) }}
+            Files: {{ files | dict2items | selectattr('value.repos', 'defined') | selectattr('value.repos', '!=', []) | list | length }}
+            Dry run: {{ dry_run }}
+            Force sync: {{ force_sync }}
+            Preserve target changes: {{ preserve_changes }}
 
-    - name: Filter tasks with repos
+    - name: Build sync tasks from file config
       ansible.builtin.set_fact:
-        active_sync_tasks: "{{ sync_tasks | selectattr('repos', 'defined') | selectattr('repos', '!=', []) | list }}"
+        sync_tasks: >-
+          {{
+            files | dict2items
+            | selectattr('value.repos', 'defined')
+            | selectattr('value.repos', '!=', [])
+            | map('combine', {'source_path': 'PLACEHOLDER'})
+            | list
+          }}
 
-    - name: Display active tasks
+    - name: Enrich sync tasks with source paths
+      ansible.builtin.set_fact:
+        sync_tasks: >-
+          {{
+            sync_tasks | map('combine', {
+              'source_path': item.key,
+              'dest_path': item.value.dest | default(item.key),
+              'repos': item.value.repos
+            }) | list
+          }}
+      loop: "{{ files | dict2items | selectattr('value.repos', 'defined') | selectattr('value.repos', '!=', []) | list }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Rebuild sync tasks properly
+      ansible.builtin.set_fact:
+        sync_tasks: []
+
+    - name: Build sync tasks list
+      ansible.builtin.set_fact:
+        sync_tasks: >-
+          {{
+            sync_tasks + [{
+              'source_path': item.key,
+              'dest_path': item.value.dest | default(item.key),
+              'repos': item.value.repos
+            }]
+          }}
+      loop: "{{ files | dict2items | selectattr('value.repos', 'defined') | selectattr('value.repos', '!=', []) | list }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Display active sync tasks
       ansible.builtin.debug:
-        msg: "Active sync tasks: {{ active_sync_tasks | length }}"
+        msg: "Syncing {{ sync_tasks | length }} file(s) to target repositories"
 
-    - name: Process each sync task
+    - name: Process each file sync
       ansible.builtin.include_role:
         name: file_sync
-      loop: "{{ active_sync_tasks }}"
+      vars:
+        sync_file:
+          source: "{{ item.source_path }}"
+          dest: "{{ item.dest_path }}"
+          repos: "{{ item.repos }}"
+      loop: "{{ sync_tasks }}"
       loop_control:
-        loop_var: sync_task
-        label: "{{ sync_task.name }}"
-      when: active_sync_tasks | length > 0
+        loop_var: item
+        label: "{{ item.source_path }} → {{ item.repos | length }} repo(s)"
+      when: sync_tasks | length > 0
 
     - name: Display completion
       ansible.builtin.debug:

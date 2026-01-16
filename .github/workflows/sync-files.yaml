@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'ansible/config/sync-tasks.yml'
+      - 'ansible/config/sync-files.yml'
       - 'ansible/templates/**'
   workflow_dispatch:
     inputs:

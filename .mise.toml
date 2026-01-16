@@ -115,7 +115,7 @@ run = """
 #!/usr/bin/env bash
 set -euo pipefail
 echo "Validating sync configuration..."
-python3 -c "import yaml; yaml.safe_load(open('ansible/config/sync-tasks.yml'))"
+python3 -c "import yaml; yaml.safe_load(open('ansible/config/sync-files.yml'))"
 echo "✓ YAML syntax valid"
 # Validate playbook syntax
 cd ansible && ansible-playbook playbooks/sync-files.yml --syntax-check
