@@ -10,6 +10,7 @@
 
 [tools]
 node = "22"
+yarn = "4.6.0"
 python = "3.11"
 github-cli = "latest"
 
@@ -25,9 +26,6 @@ run = """
 set -euo pipefail
 echo "Installing tools via mise..."
 mise install -y
-echo "Enabling corepack..."
-corepack enable
-corepack install
 echo "Installing yarn dependencies..."
 yarn install
 echo "Installing Python dependencies..."

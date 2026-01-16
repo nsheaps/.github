@@ -9,12 +9,6 @@ runs:
       with:
         install: true
 
-    - name: Enable and install corepack
-      shell: bash
-      run: |
-        mise exec -- corepack enable
-        mise exec -- corepack install
-
     - name: Install dependencies
       shell: bash
-      run: mise exec -- yarn install
+      run: yarn install

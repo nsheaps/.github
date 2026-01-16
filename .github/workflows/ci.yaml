@@ -18,13 +18,8 @@ jobs:
         with:
           install: true
 
-      - name: Enable corepack
-        run: |
-          mise exec -- corepack enable
-          mise exec -- corepack install
-
       - name: Install Node dependencies
-        run: mise exec -- yarn install
+        run: yarn install
 
       - name: Install Python dependencies
         run: pip install -r requirements.txt
