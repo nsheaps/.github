@@ -1,0 +1,58 @@
+---
+# File Synchronization Configuration
+#
+# Structure: file_path → repo list
+#   Key: Path to source file (relative to ansible/templates/)
+#   Value: Configuration for that file
+#
+# Simple form (dest = source path):
+#   ".github/workflows/ci.yml":
+#     repos:
+#       - nsheaps/repo-a
+#       - nsheaps/repo-b
+#
+# Extended form (custom destination):
+#   "configs/renovate-base.json":
+#     dest: "renovate.json"
+#     repos:
+#       - nsheaps/repo-c
+#
+# For local development: export GITHUB_TOKEN=ghp_xxx
+# For CI: configure GitHub App credentials
+
+defaults:
+  # Central repo always trumps target repos
+  # If target has modifications, a PR is opened in .github to preserve them
+  preserve_target_changes: true
+  commit_message_prefix: "[sync]"
+
+# Files to sync
+# Key = source file path (relative to ansible/templates/)
+# Value = { dest (optional), repos: [list of org/repo] }
+files:
+  # Example: Sync shared CI workflow
+  # ".github/workflows/ci.yml":
+  #   repos:
+  #     - nsheaps/example-repo-1
+  #     - nsheaps/example-repo-2
+
+  # Example: Sync renovate config with different dest path
+  # "configs/renovate-org.json":
+  #   dest: "renovate.json"
+  #   repos:
+  #     - nsheaps/example-repo-1
+
+  # Example: Sync CODEOWNERS
+  # ".github/CODEOWNERS":
+  #   repos:
+  #     - nsheaps/example-repo-1
+  #     - nsheaps/example-repo-2
+
+# Automation notice - synced to all managed repos
+  ".github/NOTICE.md":
+    repos:
+      - nsheaps/renovate-config
+      - nsheaps/.ai
+      - nsheaps/dotfiles
+      - nsheaps/homebrew-devsetup
+      - nsheaps/github2

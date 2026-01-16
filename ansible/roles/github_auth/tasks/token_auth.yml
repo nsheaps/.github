@@ -1,0 +1,32 @@
+---
+# Personal access token authentication (for local development)
+
+- name: Set access token from environment
+  ansible.builtin.set_fact:
+    github_access_token: "{{ github_token }}"
+  no_log: true
+
+- name: Validate token is set
+  ansible.builtin.assert:
+    that:
+      - github_access_token | length > 0
+    fail_msg: |
+      GITHUB_TOKEN environment variable not set.
+      Create a personal access token at: https://github.com/settings/tokens
+      Required scopes: repo, read:org
+      Then run: export GITHUB_TOKEN=ghp_xxx
+
+- name: Test token authentication
+  ansible.builtin.uri:
+    url: "https://api.github.com/user"
+    method: GET
+    headers:
+      Authorization: "token {{ github_access_token }}"
+      Accept: "application/vnd.github+json"
+    status_code: 200
+  register: auth_test
+  delegate_to: localhost
+
+- name: Display authentication success
+  ansible.builtin.debug:
+    msg: "Authenticated as {{ auth_test.json.login }} via personal token"

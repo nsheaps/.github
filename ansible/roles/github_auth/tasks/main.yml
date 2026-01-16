@@ -1,0 +1,29 @@
+---
+# GitHub authentication role
+# Supports both GitHub App (CI) and personal token (local) authentication
+
+- name: Determine authentication method
+  ansible.builtin.set_fact:
+    auth_method: "{{ github_auth_method }}"
+
+- name: Display authentication method
+  ansible.builtin.debug:
+    msg: "Using authentication method: {{ auth_method }}"
+
+- name: Authenticate with GitHub App
+  ansible.builtin.include_tasks: app_auth.yml
+  when: auth_method == "app"
+
+- name: Use personal access token
+  ansible.builtin.include_tasks: token_auth.yml
+  when: auth_method == "token"
+
+- name: Validate authentication
+  ansible.builtin.assert:
+    that:
+      - github_access_token is defined
+      - github_access_token | length > 0
+    fail_msg: |
+      GitHub authentication failed - no access token available.
+      For local development: export GITHUB_TOKEN=ghp_xxx
+      For CI: Configure GitHub App credentials in vault

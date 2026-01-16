@@ -1,0 +1,131 @@
+name: Sync Files
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ansible/config/sync-files.yml'
+      - 'ansible/templates/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ansible/config/sync-files.yml'
+      - 'ansible/templates/**'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (preview changes only)'
+        type: boolean
+        default: false
+      force:
+        description: 'Force sync all files (ignore unchanged)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sync:
+    name: Sync Files to Repositories
+    runs-on: ubuntu-latest
+    # Skip if secrets aren't configured (allows PRs to pass CI)
+    if: ${{ secrets.AUTOMATION_GITHUB_APP_ID != '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.AUTOMATION_GITHUB_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          cd ansible && ansible-galaxy collection install -r requirements.yml
+
+      - name: Validate sync configuration
+        run: mise run validate-sync-config
+
+      - name: Run file sync
+        id: sync
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          # Dry run for PRs, actual sync for push/dispatch
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            DRY_RUN="-e dry_run=true"
+          elif [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY_RUN="-e dry_run=true"
+          else
+            DRY_RUN=""
+          fi
+
+          if [ "${{ inputs.force }}" = "true" ]; then
+            FORCE="-e force_sync=true"
+          else
+            FORCE=""
+          fi
+
+          cd ansible
+          # Capture output for PR comment
+          OUTPUT=$(ansible-playbook playbooks/sync-files.yml \
+            -i inventory/production.yml \
+            -e github_auth_method=token \
+            $DRY_RUN \
+            $FORCE 2>&1) || true
+
+          echo "output<<EOF" >> $GITHUB_OUTPUT
+          echo "$OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # PR comment handling - find and delete old comments, post new one
+      - name: Find previous sync comment
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: '<!-- file-sync-dry-run -->'
+
+      - name: Delete previous sync comment
+        if: github.event_name == 'pull_request' && steps.find-comment.outputs.comment-id != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.deleteComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ steps.find-comment.outputs.comment-id }}
+            })
+
+      - name: Post dry run results
+        if: github.event_name == 'pull_request'
+        uses: GrantBirki/comment@v2
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- file-sync-dry-run -->
+            ## 🔄 File Sync Dry Run Results
+
+            <details>
+            <summary>Ansible Output</summary>
+
+            ```
+            ${{ steps.sync.outputs.output }}
+            ```
+
+            </details>
+
+            ---
+            *This is a dry run preview. Files will be synced when merged to main.*

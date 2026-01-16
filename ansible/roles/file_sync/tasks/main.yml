@@ -1,0 +1,26 @@
+---
+# File synchronization role
+# Syncs a single file to multiple target repositories
+# Central repo trumps target; preserves target changes via PR
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - github_access_token is defined
+      - sync_file is defined
+      - sync_file.source is defined
+      - sync_file.dest is defined
+      - sync_file.repos is defined
+      - sync_file.repos | length > 0
+    fail_msg: "Missing required variables for file sync"
+
+- name: Display sync operation
+  ansible.builtin.debug:
+    msg: "Syncing {{ sync_file.source }} → {{ sync_file.dest }} to {{ sync_file.repos | length }} repo(s)"
+
+- name: Process each target repository
+  ansible.builtin.include_tasks: sync_to_repo.yml
+  loop: "{{ sync_file.repos }}"
+  loop_control:
+    loop_var: target_repo
+    label: "{{ target_repo }}"
