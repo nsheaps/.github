@@ -30,6 +30,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.AUTOMATION_GITHUB_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Setup mise
         uses: jdx/mise-action@v2
         with:
@@ -45,34 +53,18 @@ jobs:
 
       - name: Run file sync
         env:
-          GITHUB_APP_ID: ${{ secrets.SYNC_APP_ID }}
-          GITHUB_INSTALLATION_ID: ${{ secrets.SYNC_INSTALLATION_ID }}
-          GITHUB_PRIVATE_KEY: ${{ secrets.SYNC_PRIVATE_KEY }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           FLAGS=""
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            FLAGS="$FLAGS --dry-run"
+            FLAGS="$FLAGS -e dry_run=true"
           fi
           if [ "${{ inputs.force }}" = "true" ]; then
-            FLAGS="$FLAGS --force"
+            FLAGS="$FLAGS -e force_sync=true"
           fi
-
-          # Create temporary vault file from secrets
-          cat > ansible/inventory/vault.yml << EOF
-          ---
-          vault_github_app_id: "$GITHUB_APP_ID"
-          vault_github_installation_id: "$GITHUB_INSTALLATION_ID"
-          vault_github_private_key: |
-          $(echo "$GITHUB_PRIVATE_KEY" | sed 's/^/    /')
-          EOF
 
           cd ansible
           ansible-playbook playbooks/sync-files.yml \
             -i inventory/production.yml \
-            -e @inventory/vault.yml \
-            -e github_auth_method=app \
+            -e github_auth_method=token \
             $FLAGS
-
-      - name: Cleanup vault file
-        if: always()
-        run: rm -f ansible/inventory/vault.yml
