@@ -1,0 +1,21 @@
+name: "Sync Stars Pull"
+description: "Pull stars from GitHub Lists to YAML configuration"
+
+inputs:
+  github-token:
+    description: "GitHub token with user scope for star list management"
+    required: true
+  config-path:
+    description: "Path to stars.yaml config file"
+    required: false
+    default: ".github/stars.yaml"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run sync
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        STARS_CONFIG_PATH: ${{ inputs.config-path }}
+      run: yarn tsx ${{ github.action_path }}/src/index.ts

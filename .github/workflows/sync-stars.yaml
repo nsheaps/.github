@@ -1,0 +1,55 @@
+name: Sync Stars Lists
+
+on:
+  push:
+    paths:
+      - ".github/stars.yaml"
+  workflow_dispatch:
+    inputs:
+      direction:
+        description: "Sync direction"
+        required: true
+        default: "repo-to-github"
+        type: choice
+        options:
+          - repo-to-github # Push: YAML config → GitHub Lists
+          - github-to-repo # Pull: GitHub Lists → YAML config
+
+jobs:
+  push-to-github:
+    name: "Push: Repository → GitHub"
+    if: github.event_name == 'push' || inputs.direction == 'repo-to-github'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+
+      - name: Sync stars to GitHub lists
+        uses: ./.github/actions/sync-stars-push
+        with:
+          github-token: ${{ secrets.STARS_TOKEN }}
+
+  pull-from-github:
+    name: "Pull: GitHub → Repository"
+    if: inputs.direction == 'github-to-repo'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+
+      - name: Fetch stars from GitHub
+        uses: ./.github/actions/sync-stars-pull
+        with:
+          github-token: ${{ secrets.STARS_TOKEN }}
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/stars.yaml
+          git diff --staged --quiet || git commit -m "Sync stars from GitHub API"
+          git push
