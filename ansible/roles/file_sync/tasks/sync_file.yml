@@ -1,0 +1,74 @@
+---
+# Sync (create/update) a file to a repository
+
+- name: Validate source file is defined
+  ansible.builtin.assert:
+    that:
+      - sync_task.source is defined
+    fail_msg: "Source file required for 'present' state in task: {{ sync_task.name }}"
+
+- name: Read source file content
+  ansible.builtin.slurp:
+    src: "{{ templates_source_dir }}/{{ sync_task.source }}"
+  register: file_content
+  delegate_to: localhost
+
+- name: Get current file from repository
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ target_repo }}/contents/{{ sync_task.dest }}"
+    method: GET
+    headers:
+      Authorization: "token {{ github_access_token }}"
+      Accept: "application/vnd.github+json"
+    status_code: [200, 404]
+  register: current_file
+  delegate_to: localhost
+
+- name: Determine if file needs update
+  ansible.builtin.set_fact:
+    file_needs_update: >-
+      {{
+        current_file.status == 404 or
+        force_sync or
+        (current_file.json.content | default('') | b64decode) != (file_content.content | b64decode)
+      }}
+
+- name: Determine dry run status message
+  ansible.builtin.set_fact:
+    dry_run_action: >-
+      {{ 'Would create' if current_file.status == 404
+         else 'Would update' if file_needs_update
+         else 'No changes needed' }}
+  when: dry_run
+
+- name: Display sync status (dry run)
+  ansible.builtin.debug:
+    msg: "{{ target_repo }}/{{ sync_task.dest }}: {{ dry_run_action }}"
+  when: dry_run
+
+- name: Create or update file
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ target_repo }}/contents/{{ sync_task.dest }}"
+    method: PUT
+    headers:
+      Authorization: "token {{ github_access_token }}"
+      Accept: "application/vnd.github+json"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      message: "{{ sync_task.commit_message | default(default_commit_message_prefix + ' Update ' + sync_task.dest) }}"
+      content: "{{ file_content.content }}"
+      sha: "{{ current_file.json.sha | default(omit) }}"
+    status_code: [200, 201]
+  when:
+    - file_needs_update
+    - not dry_run
+  delegate_to: localhost
+  register: sync_result
+
+- name: Display sync result
+  ansible.builtin.debug:
+    msg: "{{ target_repo }}/{{ sync_task.dest }}: {{ 'Created' if current_file.status == 404 else 'Updated' }}"
+  when:
+    - file_needs_update
+    - not dry_run

@@ -1,0 +1,15 @@
+---
+# GitHub authentication defaults
+
+# Authentication method: "app" or "token"
+# Auto-detected based on available credentials
+github_auth_method: "{{ 'app' if (vault_github_app_id is defined and vault_github_app_id) else 'token' }}"
+
+# GitHub App credentials (for CI - from vault)
+vault_github_app_id: ""
+vault_github_installation_id: ""
+vault_github_private_key: ""
+
+# Personal access token (for local dev - from environment)
+# Set via: export GITHUB_TOKEN=ghp_xxx
+github_token: "{{ lookup('env', 'GITHUB_TOKEN') | default('', true) }}"

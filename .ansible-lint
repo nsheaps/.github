@@ -1,0 +1,21 @@
+# Ansible-lint configuration
+# See: https://ansible.readthedocs.io/projects/lint/configuring/
+
+profile: basic
+
+# Skip rules that are overly strict for this project
+skip_list:
+  # Variable naming conventions - we intentionally use shared vars across roles
+  - var-naming[no-role-prefix]
+
+# Warn but don't fail on these
+warn_list:
+  - yaml[line-length]
+
+# Exclude paths
+exclude_paths:
+  - ansible/inventory/example.vault.yml
+  - ansible/templates/
+
+# Enable offline mode (don't fetch Galaxy roles during lint)
+offline: true

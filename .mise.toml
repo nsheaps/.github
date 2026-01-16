@@ -1,7 +1,170 @@
+# nsheaps/.github - Organization Configuration Repository
+#
+# Prerequisites:
+#   - mise: https://mise.run
+#
+# Usage:
+#   mise run          # Show available tasks
+#   mise run setup    # Install dependencies
+#   mise run check    # Run all checks (CI equivalent)
+
 [tools]
 node = "22"
+python = "3.11"
 github-cli = "latest"
-just = "latest"
 
 [settings]
 experimental = true
+
+# === Development Tasks ===
+
+[tasks.setup]
+description = "Install all development dependencies"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+echo "Installing tools via mise..."
+mise install -y
+echo "Enabling corepack..."
+corepack enable
+corepack install
+echo "Installing yarn dependencies..."
+yarn install
+echo "Installing Python dependencies..."
+pip install -q -r requirements.txt
+echo "Installing Ansible Galaxy requirements..."
+cd ansible && ansible-galaxy collection install -r requirements.yml --force
+echo "Setup complete!"
+"""
+
+[tasks.lint]
+description = "Run linting (eslint)"
+run = "yarn check"
+
+[tasks.lint-fix]
+description = "Auto-fix lint issues"
+run = "yarn fix"
+
+[tasks.typecheck]
+description = "Run TypeScript type checking"
+run = "yarn check"
+
+[tasks.build]
+description = "Build all projects"
+run = "yarn build"
+
+[tasks.test]
+description = "Run all tests"
+run = "yarn test"
+
+[tasks.check]
+description = "Run all checks (equivalent to CI)"
+depends = ["lint", "build", "test"]
+run = 'echo "All checks passed!"'
+
+[tasks.validate-workflows]
+description = "Validate workflow syntax with actionlint"
+run = """
+#!/usr/bin/env bash
+if command -v actionlint &> /dev/null; then
+    actionlint .github/workflows/*.yaml
+else
+    echo "actionlint not installed, skipping workflow validation"
+    echo "Install with: brew install actionlint"
+fi
+"""
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = """
+rm -rf .github/actions/*/dist
+rm -rf .nx
+rm -rf node_modules
+"""
+
+# === Ansible File Synchronization ===
+
+[tasks.ansible-setup]
+description = "Install Ansible and Python dependencies"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+echo "Installing Python dependencies..."
+pip install -q -r requirements.txt
+echo "Installing Ansible Galaxy requirements..."
+cd ansible && ansible-galaxy collection install -r requirements.yml --force
+echo "Ansible setup complete!"
+"""
+
+[tasks.ansible-lint]
+description = "Run Ansible linting"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+if command -v ansible-lint &> /dev/null; then
+    ansible-lint ansible/
+else
+    echo "ansible-lint not installed, skipping"
+    echo "Install with: pip install ansible-lint"
+fi
+"""
+
+[tasks.validate-sync-config]
+description = "Validate sync configuration syntax"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+echo "Validating sync configuration..."
+python3 -c "import yaml; yaml.safe_load(open('ansible/config/sync-tasks.yml'))"
+echo "✓ YAML syntax valid"
+# Validate playbook syntax
+cd ansible && ansible-playbook playbooks/sync-files.yml --syntax-check
+echo "✓ Playbook syntax valid"
+"""
+
+[tasks.sync-files]
+description = "Sync files to target repositories"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$MISE_PROJECT_ROOT/ansible"
+
+# Parse flags from args
+DRY_RUN=""
+FORCE=""
+VERBOSE=""
+for flag in "$@"; do
+    case "$flag" in
+        --dry-run) DRY_RUN="-e dry_run=true" ;;
+        --force) FORCE="-e force_sync=true" ;;
+        -v|--verbose) VERBOSE="-v" ;;
+    esac
+done
+
+# Check for GITHUB_TOKEN (local) or vault (CI)
+if [ -z "${GITHUB_TOKEN:-}" ] && [ ! -f inventory/vault.yml ]; then
+    echo "Error: Set GITHUB_TOKEN env var or configure ansible vault"
+    echo "  For local dev: export GITHUB_TOKEN=ghp_xxx"
+    echo "  For CI: Create inventory/vault.yml from example.vault.yml"
+    exit 1
+fi
+
+# Determine auth args
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+    AUTH_ARGS="-e github_auth_method=token"
+else
+    AUTH_ARGS="--ask-vault-pass"
+fi
+
+ansible-playbook playbooks/sync-files.yml \
+    -i inventory/production.yml \
+    $AUTH_ARGS \
+    $DRY_RUN \
+    $FORCE \
+    $VERBOSE
+"""
+
+[tasks.sync-files-preview]
+description = "Preview sync changes without making changes"
+run = "mise run sync-files -- --dry-run"

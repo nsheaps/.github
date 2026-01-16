@@ -1,0 +1,23 @@
+---
+# File synchronization role
+# Processes a single sync task across its target repositories
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - github_access_token is defined
+      - sync_task is defined
+      - sync_task.dest is defined
+      - sync_task.repos is defined
+      - sync_task.repos | length > 0
+    fail_msg: "Missing required variables for file sync task: {{ sync_task.name | default('unnamed') }}"
+
+- name: Display sync task
+  ansible.builtin.debug:
+    msg: "Processing: {{ sync_task.name }} ({{ sync_task.state | default('present') }}) -> {{ sync_task.repos | length }} repos"
+
+- name: Route to appropriate task handler
+  ansible.builtin.include_tasks: "{{ 'delete_file.yml' if (sync_task.state | default('present')) == 'absent' else 'sync_file.yml' }}"
+  loop: "{{ sync_task.repos }}"
+  loop_control:
+    loop_var: target_repo

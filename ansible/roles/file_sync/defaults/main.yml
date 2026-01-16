@@ -1,0 +1,12 @@
+---
+# File synchronization role defaults
+
+# Source directory for template files (relative to playbook)
+templates_source_dir: "{{ playbook_dir }}/../templates"
+
+# Default sync behavior
+force_sync: false
+default_commit_message_prefix: "[sync]"
+
+# Dry run mode (check only, no changes)
+dry_run: false

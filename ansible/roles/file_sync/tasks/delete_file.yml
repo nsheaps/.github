@@ -1,0 +1,50 @@
+---
+# Delete a file from a repository
+
+- name: Get current file from repository
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ target_repo }}/contents/{{ sync_task.dest }}"
+    method: GET
+    headers:
+      Authorization: "token {{ github_access_token }}"
+      Accept: "application/vnd.github+json"
+    status_code: [200, 404]
+  register: current_file
+  delegate_to: localhost
+
+- name: Display deletion status (dry run)
+  ansible.builtin.debug:
+    msg: "{{ target_repo }}/{{ sync_task.dest }}: {{ 'Would delete' if current_file.status == 200 else 'Already absent' }}"
+  when: dry_run
+
+- name: Delete file if it exists
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ target_repo }}/contents/{{ sync_task.dest }}"
+    method: DELETE
+    headers:
+      Authorization: "token {{ github_access_token }}"
+      Accept: "application/vnd.github+json"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      message: "{{ sync_task.commit_message | default(default_commit_message_prefix + ' Remove ' + sync_task.dest) }}"
+      sha: "{{ current_file.json.sha }}"
+    status_code: [200]
+  when:
+    - current_file.status == 200
+    - not dry_run
+  delegate_to: localhost
+
+- name: Display deletion result
+  ansible.builtin.debug:
+    msg: "{{ target_repo }}/{{ sync_task.dest }}: Deleted"
+  when:
+    - current_file.status == 200
+    - not dry_run
+
+- name: Display already absent
+  ansible.builtin.debug:
+    msg: "{{ target_repo }}/{{ sync_task.dest }}: Already absent"
+  when:
+    - current_file.status == 404
+    - not dry_run

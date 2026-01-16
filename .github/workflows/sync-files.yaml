@@ -1,0 +1,84 @@
+name: Sync Files
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ansible/config/sync-tasks.yml'
+      - 'ansible/templates/**'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (preview changes only)'
+        type: boolean
+        default: false
+      force:
+        description: 'Force sync all files (ignore unchanged)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync Files to Repositories
+    runs-on: ubuntu-latest
+    # Only run if GitHub App is configured
+    if: ${{ vars.SYNC_APP_CONFIGURED == 'true' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          cd ansible && ansible-galaxy collection install -r requirements.yml
+
+      - name: Validate sync configuration
+        run: mise run validate-sync-config
+
+      - name: Run file sync
+        env:
+          GITHUB_APP_ID: ${{ secrets.SYNC_APP_ID }}
+          GITHUB_INSTALLATION_ID: ${{ secrets.SYNC_INSTALLATION_ID }}
+          GITHUB_PRIVATE_KEY: ${{ secrets.SYNC_PRIVATE_KEY }}
+        run: |
+          FLAGS=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            FLAGS="$FLAGS --dry-run"
+          fi
+          if [ "${{ inputs.force }}" = "true" ]; then
+            FLAGS="$FLAGS --force"
+          fi
+
+          # Create temporary vault file from secrets
+          cat > ansible/inventory/vault.yml << EOF
+          ---
+          vault_github_app_id: "$GITHUB_APP_ID"
+          vault_github_installation_id: "$GITHUB_INSTALLATION_ID"
+          vault_github_private_key: |
+          $(echo "$GITHUB_PRIVATE_KEY" | sed 's/^/    /')
+          EOF
+
+          cd ansible
+          ansible-playbook playbooks/sync-files.yml \
+            -i inventory/production.yml \
+            -e @inventory/vault.yml \
+            -e github_auth_method=app \
+            $FLAGS
+
+      - name: Cleanup vault file
+        if: always()
+        run: rm -f ansible/inventory/vault.yml

@@ -1,0 +1,41 @@
+---
+# GitHub App authentication (for CI)
+
+- name: Validate GitHub App credentials
+  ansible.builtin.assert:
+    that:
+      - vault_github_app_id is defined and vault_github_app_id | length > 0
+      - vault_github_installation_id is defined and vault_github_installation_id | length > 0
+      - vault_github_private_key is defined and vault_github_private_key | length > 0
+    fail_msg: "GitHub App credentials not configured in vault"
+
+- name: Generate JWT token
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/scripts/generate_jwt.py"
+  environment:
+    GITHUB_APP_ID: "{{ vault_github_app_id }}"
+    GITHUB_PRIVATE_KEY: "{{ vault_github_private_key }}"
+  register: jwt_result
+  delegate_to: localhost
+  no_log: true
+
+- name: Get installation access token
+  ansible.builtin.uri:
+    url: "https://api.github.com/app/installations/{{ vault_github_installation_id }}/access_tokens"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ jwt_result.stdout | trim }}"
+      Accept: "application/vnd.github+json"
+    status_code: 201
+  register: installation_token
+  delegate_to: localhost
+  no_log: true
+
+- name: Set access token
+  ansible.builtin.set_fact:
+    github_access_token: "{{ installation_token.json.token }}"
+  no_log: true
+
+- name: Display authentication success
+  ansible.builtin.debug:
+    msg: "Authenticated via GitHub App (installation {{ vault_github_installation_id }})"

@@ -1,0 +1,61 @@
+---
+# File Synchronization Playbook
+#
+# Syncs files to target repositories based on config/sync-tasks.yml
+#
+# Usage:
+#   Local (with personal token):
+#     export GITHUB_TOKEN=ghp_xxx
+#     just sync-files [--dry-run] [--force]
+#
+#   CI (with GitHub App):
+#     ansible-playbook playbooks/sync-files.yml -e @inventory/vault.yml
+
+- name: Authenticate with GitHub
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../config/sync-tasks.yml"
+
+  tasks:
+    - name: Authenticate with GitHub
+      ansible.builtin.include_role:
+        name: github_auth
+
+- name: Sync files to repositories
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - "{{ playbook_dir }}/../config/sync-tasks.yml"
+
+  tasks:
+    - name: Display configuration summary
+      ansible.builtin.debug:
+        msg: |
+          File Sync Configuration:
+            Tasks: {{ sync_tasks | length }}
+            Dry run: {{ dry_run | default(false) }}
+            Force sync: {{ force_sync | default(false) }}
+
+    - name: Filter tasks with repos
+      ansible.builtin.set_fact:
+        active_sync_tasks: "{{ sync_tasks | selectattr('repos', 'defined') | selectattr('repos', '!=', []) | list }}"
+
+    - name: Display active tasks
+      ansible.builtin.debug:
+        msg: "Active sync tasks: {{ active_sync_tasks | length }}"
+
+    - name: Process each sync task
+      ansible.builtin.include_role:
+        name: file_sync
+      loop: "{{ active_sync_tasks }}"
+      loop_control:
+        loop_var: sync_task
+        label: "{{ sync_task.name }}"
+      when: active_sync_tasks | length > 0
+
+    - name: Display completion
+      ansible.builtin.debug:
+        msg: "File synchronization complete!"

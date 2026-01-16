@@ -23,14 +23,29 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
       - name: Enable corepack
         run: |
           corepack enable
           corepack install
 
-      - name: Install dependencies
+      - name: Install Node dependencies
         run: yarn install
 
-      # Use justfile for consistent local/CI behavior
-      - name: Run checks
-        run: just check
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # Use mise tasks for consistent local/CI behavior
+      - name: Run TypeScript checks
+        run: mise run check
+
+      - name: Validate Ansible sync config
+        run: mise run validate-sync-config
+
+      - name: Run Ansible linting
+        run: mise run ansible-lint

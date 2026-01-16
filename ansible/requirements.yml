@@ -1,0 +1,6 @@
+---
+# Ansible Galaxy requirements
+collections:
+  - name: ansible.builtin
+  - name: community.general
+    version: ">=8.0.0"

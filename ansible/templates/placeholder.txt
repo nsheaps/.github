@@ -1,0 +1,3 @@
+# Placeholder
+# This file exists to validate the sync infrastructure works.
+# Remove this file and update ansible/config/sync-tasks.yml with real tasks.

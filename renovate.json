@@ -8,10 +8,18 @@
       "automerge": false
     }
   ],
+  "ansible": {
+    "enabled": true,
+    "fileMatch": ["(^|/)ansible/.*\\.ya?ml$"]
+  },
   "github-actions": {
     "enabled": true
   },
   "npm": {
     "enabled": true
+  },
+  "pip_requirements": {
+    "enabled": true,
+    "fileMatch": ["(^|/)requirements.*\\.txt$"]
   }
 }
