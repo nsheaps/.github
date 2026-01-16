@@ -50,4 +50,9 @@ files:
 
 # Automation notice - synced to all managed repos
   ".github/NOTICE.md":
-    repos: []  # Add target repos here, e.g.: nsheaps/repo-name
+    repos:
+      - nsheaps/renovate-config
+      - nsheaps/.ai
+      - nsheaps/dotfiles
+      - nsheaps/homebrew-devsetup
+      - nsheaps/github2
