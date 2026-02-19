@@ -48,6 +48,13 @@ files:
   #     - nsheaps/example-repo-1
   #     - nsheaps/example-repo-2
 
+# Canonical test workflow for tool repos
+  ".github/workflows/test.yaml":
+    repos:
+      - nsheaps/gs-stack-status
+      - nsheaps/claude-utils
+      - nsheaps/git-wt
+
 # Automation notice - synced to all managed repos
   ".github/NOTICE.md":
     repos:
