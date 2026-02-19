@@ -5,7 +5,7 @@
 #   Key: Path to source file (relative to ansible/templates/)
 #   Value: Configuration for that file
 #
-# Simple form (dest = source path):
+# Simple form (exact copy, dest = source path):
 #   ".github/workflows/ci.yml":
 #     repos:
 #       - nsheaps/repo-a
@@ -16,6 +16,15 @@
 #     dest: "renovate.json"
 #     repos:
 #       - nsheaps/repo-c
+#
+# Template form (Jinja2 rendering with per-repo vars):
+#   ".github/workflows/release.yaml.j2":
+#     dest: ".github/workflows/release.yaml"
+#     template: true
+#     repos:
+#       - repo: nsheaps/my-tool
+#         vars:
+#           tool_name: my-tool
 #
 # For local development: export GITHUB_TOKEN=ghp_xxx
 # For CI: configure GitHub App credentials
@@ -28,34 +37,16 @@ defaults:
 
 # Files to sync
 # Key = source file path (relative to ansible/templates/)
-# Value = { dest (optional), repos: [list of org/repo] }
+# Value = { dest (optional), template (optional), repos: [list] }
 files:
-  # Example: Sync shared CI workflow
-  # ".github/workflows/ci.yml":
-  #   repos:
-  #     - nsheaps/example-repo-1
-  #     - nsheaps/example-repo-2
-
-  # Example: Sync renovate config with different dest path
-  # "configs/renovate-org.json":
-  #   dest: "renovate.json"
-  #   repos:
-  #     - nsheaps/example-repo-1
-
-  # Example: Sync CODEOWNERS
-  # ".github/CODEOWNERS":
-  #   repos:
-  #     - nsheaps/example-repo-1
-  #     - nsheaps/example-repo-2
-
-# Canonical test workflow for tool repos
+  # Canonical test workflow for tool repos
   ".github/workflows/test.yaml":
     repos:
       - nsheaps/gs-stack-status
       - nsheaps/claude-utils
       - nsheaps/git-wt
 
-# Automation notice - synced to all managed repos
+  # Automation notice - synced to all managed repos
   ".github/NOTICE.md":
     repos:
       - nsheaps/renovate-config
@@ -63,3 +54,24 @@ files:
       - nsheaps/dotfiles
       - nsheaps/homebrew-devsetup
       - nsheaps/github2
+
+  # Release workflow - templatized per tool repo
+  ".github/workflows/release.yaml.j2":
+    dest: ".github/workflows/release.yaml"
+    template: true
+    repos:
+      - repo: nsheaps/gs-stack-status
+        vars:
+          tool_name: gs-stack-status
+          formula_template: gs-stack-status.rb.gotmpl
+          formula_output: gs-stack-status.rb
+      - repo: nsheaps/claude-utils
+        vars:
+          tool_name: claude-utils
+          formula_template: claude-utils.rb.gotmpl
+          formula_output: claude-utils.rb
+      - repo: nsheaps/git-wt
+        vars:
+          tool_name: git-wt
+          formula_template: git-wt.rb.gotmpl
+          formula_output: git-wt.rb

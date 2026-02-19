@@ -1,12 +1,53 @@
 ---
 # Sync a single file to a single repository
 # Handles conflict detection and PR creation for preserved changes
+#
+# Supports two modes:
+#   - Exact copy (default): reads source file directly
+#   - Template mode (sync_file.template == true): renders source as Jinja2
+#     template with repo_vars before syncing
 
+# --- Template rendering (when template: true) ---
+- name: Render template to temporary file
+  ansible.builtin.template:
+    src: "{{ templates_dir }}/{{ sync_file.source }}"
+    dest: "/tmp/rendered_sync_{{ sync_file.source | hash('md5') }}_{{ target_repo | replace('/', '-') }}"
+  when: sync_file.template | default(false)
+  vars: "{{ repo_vars }}"
+  delegate_to: localhost
+
+- name: Read rendered template content
+  ansible.builtin.slurp:
+    src: "/tmp/rendered_sync_{{ sync_file.source | hash('md5') }}_{{ target_repo | replace('/', '-') }}"
+  register: rendered_content
+  when: sync_file.template | default(false)
+  delegate_to: localhost
+
+- name: Clean up rendered template
+  ansible.builtin.file:
+    path: "/tmp/rendered_sync_{{ sync_file.source | hash('md5') }}_{{ target_repo | replace('/', '-') }}"
+    state: absent
+  when: sync_file.template | default(false)
+  delegate_to: localhost
+
+# --- Exact copy (default behavior) ---
 - name: Read source file content
   ansible.builtin.slurp:
     src: "{{ templates_dir }}/{{ sync_file.source }}"
-  register: source_content
+  register: exact_content
+  when: not (sync_file.template | default(false))
   delegate_to: localhost
+
+# --- Unified content variable ---
+- name: Set source content (template mode)
+  ansible.builtin.set_fact:
+    source_content: "{{ rendered_content }}"
+  when: sync_file.template | default(false)
+
+- name: Set source content (exact copy mode)
+  ansible.builtin.set_fact:
+    source_content: "{{ exact_content }}"
+  when: not (sync_file.template | default(false))
 
 - name: Get current file from target repository
   ansible.builtin.uri:
