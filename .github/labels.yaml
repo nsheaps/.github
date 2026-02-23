@@ -1,0 +1,66 @@
+# Organization-standard GitHub labels for nsheaps repos
+# Synced by Financial-Times/github-label-sync
+# Changes to this file trigger sync to all listed repos
+
+# Standard GitHub labels
+- name: "bug"
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: "documentation"
+  color: "0075ca"
+  description: "Improvements or additions to documentation"
+
+- name: "duplicate"
+  color: "cfd3d7"
+  description: "This issue or pull request already exists"
+
+- name: "enhancement"
+  color: "a2eeef"
+  description: "New feature or request"
+
+- name: "good first issue"
+  color: "7057ff"
+  description: "Good for newcomers"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Extra attention is needed"
+
+- name: "invalid"
+  color: "e4e669"
+  description: "This doesn't seem right"
+
+- name: "question"
+  color: "d876e3"
+  description: "Further information is requested"
+
+- name: "wontfix"
+  color: "ffffff"
+  description: "This will not be worked on"
+
+# Priority labels
+- name: "p1"
+  color: "d73a4a"
+  description: "Need to do next"
+
+- name: "p2"
+  color: "e4e669"
+  description: "Next week"
+
+- name: "p3"
+  color: "0075ca"
+  description: "After 2 weeks"
+
+- name: "p4"
+  color: "cfd3d7"
+  description: "Eventually"
+
+# Workflow labels
+- name: "needs-human-attention"
+  color: "FF6600"
+  description: "Requires repo owner decision, credentials, or approval"
+
+- name: "ready"
+  color: "0E8A16"
+  description: "QA approved — ready to merge"
