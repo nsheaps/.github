@@ -78,7 +78,7 @@ mise run sync-files -- --dry-run  # Preview changes
 │   ├── roles/             # Ansible roles
 │   └── templates/         # Source files to sync
 ├── docs/                  # Documentation
-├── .mise.toml             # Tool versions and tasks
+├── mise.toml              # Tool versions and tasks
 ├── package.json           # Node.js configuration
 ├── nx.json                # Nx build orchestration
 └── tsconfig.base.json     # TypeScript configuration
