@@ -11,19 +11,8 @@ permissions:
   contents: read
 
 jobs:
-  check-prerequisites:
-    runs-on: ubuntu-latest
-    if: ${{ secrets.AUTOMATION_GITHUB_APP_ID == '' }}
-    steps:
-      - name: Missing GitHub App secrets
-        run: |
-          echo "::error::AUTOMATION_GITHUB_APP_ID and AUTOMATION_GITHUB_APP_PRIVATE_KEY secrets are required."
-          echo "::error::Configure a GitHub App with label management permissions and add the secrets to this repo."
-          exit 1
-
   sync-labels:
     runs-on: ubuntu-latest
-    if: ${{ secrets.AUTOMATION_GITHUB_APP_ID != '' }}
     strategy:
       fail-fast: false
       max-parallel: 5
