@@ -1,0 +1,63 @@
+name: Sync Labels
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/labels.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync-labels:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        repo:
+          - nsheaps/ai-mktpl
+          - nsheaps/agent-team
+          - nsheaps/op-exec
+          - nsheaps/.org
+          - nsheaps/.claude
+          - nsheaps/github-actions
+          - nsheaps/iac
+          - nsheaps/renovate-config
+          - nsheaps/homebrew-devsetup
+          - nsheaps/aitkit
+          - nsheaps/.github
+          - nsheaps/claude-utils
+          - nsheaps/git-wt
+          - nsheaps/gs-stack-status
+          - nsheaps/workspaces
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.AUTOMATION_GITHUB_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Install github-label-sync
+        run: npm install -g github-label-sync@3.0.0
+
+      - name: Sync labels to ${{ matrix.repo }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          github-label-sync \
+            --access-token "$GITHUB_TOKEN" \
+            --labels .github/labels.yaml \
+            --allow-added-labels \
+            ${{ matrix.repo }}
