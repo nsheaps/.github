@@ -134,6 +134,26 @@ mise run sync-files --dry-run
 
 See [File Sync documentation](docs/file-sync.md) for details.
 
+## Organization Standards
+
+This repo is part of the nsheaps org-wide mise & CI standardization effort. The standard is defined in [nsheaps/.org — mise-ci-standard.md](https://github.com/nsheaps/.org/blob/main/docs/specs/reviewed/mise-ci-standard.md).
+
+### Repos Covered by the Standard
+
+| Repo | Status |
+| :--- | :----- |
+| [ai-mktpl](https://github.com/nsheaps/ai-mktpl) | Needs task + CI updates |
+| [.github](https://github.com/nsheaps/.github) | Needs task + CI updates |
+| [aitkit](https://github.com/nsheaps/aitkit) | Needs task + CI updates |
+| [agent-team](https://github.com/nsheaps/agent-team) | Needs rename + task + CI updates |
+| [claude-utils](https://github.com/nsheaps/claude-utils) | Needs rename + task + CI updates |
+| [op-exec](https://github.com/nsheaps/op-exec) | Needs rename + task + CI updates |
+| [git-wt](https://github.com/nsheaps/git-wt) | Needs rename + task + CI updates |
+| [homebrew-devsetup](https://github.com/nsheaps/homebrew-devsetup) | Gold standard (CI); needs rename + task updates |
+| [github-actions](https://github.com/nsheaps/github-actions) | Needs rename + task updates |
+| [renovate-config](https://github.com/nsheaps/renovate-config) | Needs task + CI updates |
+| [.org](https://github.com/nsheaps/.org) | Exempt (minimal repo) |
+
 ## Claude Code Integration
 
 This repository is configured for use with [Claude Code](https://claude.ai/claude-code):
