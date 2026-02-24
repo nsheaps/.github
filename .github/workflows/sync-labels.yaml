@@ -10,29 +10,14 @@ on:
 permissions:
   contents: read
 
+env:
+  LABEL_SYNC_VERSION: "3.0.0"
+
 jobs:
   sync-labels:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 5
-      matrix:
-        repo:
-          - nsheaps/ai-mktpl
-          - nsheaps/agent-team
-          - nsheaps/op-exec
-          - nsheaps/.org
-          - nsheaps/.claude
-          - nsheaps/github-actions
-          - nsheaps/iac
-          - nsheaps/renovate-config
-          - nsheaps/homebrew-devsetup
-          - nsheaps/aitkit
-          - nsheaps/.github
-          - nsheaps/claude-utils
-          - nsheaps/git-wt
-          - nsheaps/gs-stack-status
-          - nsheaps/workspaces
+    env:
+      LABEL_SYNC_ARGS: --labels .github/labels.yaml --allow-added-labels
     steps:
       - uses: actions/checkout@v4
 
@@ -44,20 +29,45 @@ jobs:
           private-key: ${{ secrets.AUTOMATION_GITHUB_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
+      - name: Install tools via mise
+        uses: jdx/mise-action@v2
 
       - name: Install github-label-sync
-        run: npm install -g github-label-sync@3.0.0
+        run: npm install -g github-label-sync@${{ env.LABEL_SYNC_VERSION }}
 
-      - name: Sync labels to ${{ matrix.repo }}
+      - name: Sync labels to all repos
+        uses: qoomon/actions--parallel-steps@v1
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          github-label-sync \
-            --access-token "$GITHUB_TOKEN" \
-            --labels .github/labels.yaml \
-            --allow-added-labels \
-            ${{ matrix.repo }}
+        with:
+          steps: |
+            - id: ai-mktpl
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/ai-mktpl
+            - id: agent-team
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/agent-team
+            - id: op-exec
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/op-exec
+            - id: dot-org
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/.org
+            - id: dot-claude
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/.claude
+            - id: github-actions
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/github-actions
+            - id: iac
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/iac
+            - id: renovate-config
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/renovate-config
+            - id: homebrew-devsetup
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/homebrew-devsetup
+            - id: aitkit
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/aitkit
+            - id: dot-github
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/.github
+            - id: claude-utils
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/claude-utils
+            - id: git-wt
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/git-wt
+            - id: gs-stack-status
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/gs-stack-status
+            - id: workspaces
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/workspaces
