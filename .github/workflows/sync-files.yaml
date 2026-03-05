@@ -6,17 +6,18 @@ on:
     paths:
       - 'ansible/config/sync-files.yml'
       - 'ansible/templates/**'
+      - '.github/workflows/sync-files.yaml'
   pull_request:
-    branches: [main]
     paths:
       - 'ansible/config/sync-files.yml'
       - 'ansible/templates/**'
+      - '.github/workflows/sync-files.yaml'
   workflow_dispatch:
     inputs:
       dry_run:
         description: 'Dry run (preview changes only)'
         type: boolean
-        default: false
+        default: true
       force:
         description: 'Force sync all files (ignore unchanged)'
         type: boolean
