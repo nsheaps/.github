@@ -7,10 +7,6 @@ on:
       - 'ansible/templates/**'
       - '.github/workflows/sync-files.yaml'
   pull_request:
-    paths:
-      - 'ansible/config/sync-files.yml'
-      - 'ansible/templates/**'
-      - '.github/workflows/sync-files.yaml'
   workflow_dispatch:
     inputs:
       dry_run:
