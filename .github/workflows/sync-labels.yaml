@@ -19,7 +19,7 @@ jobs:
     env:
       LABEL_SYNC_ARGS: --labels .github/labels.yaml --allow-added-labels
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Generate GitHub App token
         id: app-token
