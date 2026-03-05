@@ -1,11 +1,8 @@
 name: Sync Files
 on:
   push:
-    branches: [main]
-    paths:
-      - 'ansible/config/sync-files.yml'
-      - 'ansible/templates/**'
-      - '.github/workflows/sync-files.yaml'
+    branches:
+    - main
   pull_request:
   workflow_dispatch:
     inputs:
