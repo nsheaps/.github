@@ -1,16 +1,25 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>nsheaps/renovate-config"],
+  "extends": [
+    "github>nsheaps/renovate-config"
+  ],
   "packageRules": [
     {
-      "matchPackagePatterns": ["*"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "automerge": false
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "automerge": false,
+      "matchPackageNames": [
+        "*"
+      ]
     }
   ],
   "ansible": {
     "enabled": true,
-    "fileMatch": ["(^|/)ansible/.*\\.ya?ml$"]
+    "managerFilePatterns": [
+      "/(^|/)ansible/.*\\.ya?ml$/"
+    ]
   },
   "github-actions": {
     "enabled": true
@@ -20,6 +29,8 @@
   },
   "pip_requirements": {
     "enabled": true,
-    "fileMatch": ["(^|/)requirements.*\\.txt$"]
+    "managerFilePatterns": [
+      "/(^|/)requirements.*\\.txt$/"
+    ]
   }
 }
