@@ -18,7 +18,7 @@
 
 - name: Test token authentication
   ansible.builtin.uri:
-    url: "https://api.github.com/user"
+    url: "https://api.github.com/rate_limit"
     method: GET
     headers:
       Authorization: "token {{ github_access_token }}"
@@ -29,4 +29,4 @@
 
 - name: Display authentication success
   ansible.builtin.debug:
-    msg: "Authenticated as {{ auth_test.json.login }} via personal token"
+    msg: "Token authentication successful (rate limit: {{ auth_test.json.rate.remaining }}/{{ auth_test.json.rate.limit }})"
