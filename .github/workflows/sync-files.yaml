@@ -93,7 +93,7 @@ jobs:
       # PR comment handling - find and delete old comments, post new one
       - name: Find previous sync comment
         if: github.event_name == 'pull_request' && always()
-        uses: peter-evans/find-comment@v3
+        uses: peter-evans/find-comment@v4
         id: find-comment
         with:
           issue-number: ${{ github.event.pull_request.number }}
