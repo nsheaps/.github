@@ -27,7 +27,7 @@
 
 - name: Check if sync is needed
   ansible.builtin.set_fact:
-    needs_sync: "{{ force_sync or source_decoded != target_decoded }}"
+    needs_sync: "{{ (force_sync | bool) or source_decoded != target_decoded }}"
     target_has_changes: "{{ target_exists and source_decoded != target_decoded }}"
 
 - name: Display status (dry run)
@@ -37,15 +37,15 @@
       {{ 'Would create' if not target_exists
          else 'Would update (target has changes - PR will be created)' if target_has_changes
          else 'No changes needed' }}
-  when: dry_run
+  when: dry_run | bool
 
 # Preserve target changes by creating PR in .github repo
 - name: Create PR to preserve target changes
   when:
-    - needs_sync
-    - target_has_changes
-    - preserve_changes | default(true)
-    - not dry_run
+    - needs_sync | bool
+    - target_has_changes | bool
+    - preserve_changes | default(true) | bool
+    - not (dry_run | bool)
   block:
     - name: Generate branch name for preservation PR
       ansible.builtin.set_fact:
@@ -166,8 +166,8 @@
       sha: "{{ target_file.json.sha | default(omit) }}"
     status_code: [200, 201]
   when:
-    - needs_sync
-    - not dry_run
+    - needs_sync | bool
+    - not (dry_run | bool)
   delegate_to: localhost
   register: sync_result
 
@@ -175,5 +175,5 @@
   ansible.builtin.debug:
     msg: "{{ target_repo }}/{{ sync_file.dest }}: {{ 'Created' if not target_exists else 'Updated' }}"
   when:
-    - needs_sync
-    - not dry_run
+    - needs_sync | bool
+    - not (dry_run | bool)
