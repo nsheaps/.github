@@ -17,8 +17,8 @@
     - "{{ playbook_dir }}/../config/sync-files.yml"
   vars:
     templates_dir: "{{ playbook_dir }}/../templates"
-    dry_run: "{{ dry_run | default(false) }}"
-    force_sync: "{{ force_sync | default(false) }}"
+    _dry_run: "{{ dry_run | default(false) }}"
+    _force_sync: "{{ force_sync | default(false) }}"
     preserve_changes: "{{ defaults.preserve_target_changes | default(true) }}"
     commit_prefix: "{{ defaults.commit_message_prefix | default('[sync]') }}"
 
@@ -32,8 +32,8 @@
         msg: |
           File Sync Configuration:
             Files: {{ files | dict2items | selectattr('value.repos', 'defined') | selectattr('value.repos', '!=', []) | list | length }}
-            Dry run: {{ dry_run }}
-            Force sync: {{ force_sync }}
+            Dry run: {{ _dry_run }}
+            Force sync: {{ _force_sync }}
             Preserve target changes: {{ preserve_changes }}
 
     - name: Build sync tasks from file config

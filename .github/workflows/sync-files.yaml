@@ -35,13 +35,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v2
+      - name: Authenticate as GitHub App
+        id: auth
+        uses: nsheaps/github-actions/.github/actions/github-app-auth@64ffafd33c5b691d0420c4f190b76310af8206d0
         with:
           app-id: ${{ secrets.AUTOMATION_GITHUB_APP_ID }}
           private-key: ${{ secrets.AUTOMATION_GITHUB_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
 
       - name: Setup mise
         uses: jdx/mise-action@v2
@@ -59,7 +58,7 @@ jobs:
       - name: Run file sync
         id: sync
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.auth.outputs.token }}
         run: |
           # Dry run for PRs, actual sync for push/dispatch
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -78,19 +77,22 @@ jobs:
 
           cd ansible
           # Capture output for PR comment
+          EXIT_CODE=0
           OUTPUT=$(ansible-playbook playbooks/sync-files.yml \
             -i inventory/production.yml \
             -e github_auth_method=token \
             $DRY_RUN \
-            $FORCE 2>&1) || true
+            $FORCE 2>&1) || EXIT_CODE=$?
 
           echo "output<<EOF" >> $GITHUB_OUTPUT
           echo "$OUTPUT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+          exit $EXIT_CODE
+
       # PR comment handling - find and delete old comments, post new one
       - name: Find previous sync comment
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && always()
         uses: peter-evans/find-comment@v3
         id: find-comment
         with:
@@ -98,7 +100,7 @@ jobs:
           body-includes: '<!-- file-sync-dry-run -->'
 
       - name: Delete previous sync comment
-        if: github.event_name == 'pull_request' && steps.find-comment.outputs.comment-id != ''
+        if: github.event_name == 'pull_request' && always() && steps.find-comment.outputs.comment-id != ''
         uses: actions/github-script@v8
         with:
           script: |
@@ -109,7 +111,7 @@ jobs:
             })
 
       - name: Post dry run results
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && always()
         uses: GrantBirki/comment@v2
         with:
           issue-number: ${{ github.event.pull_request.number }}
