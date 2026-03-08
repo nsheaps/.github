@@ -21,13 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v2
+      - name: Authenticate as GitHub App
+        id: auth
+        uses: nsheaps/github-actions/.github/actions/github-app-auth@64ffafd33c5b691d0420c4f190b76310af8206d0
         with:
           app-id: ${{ secrets.AUTOMATION_GITHUB_APP_ID }}
           private-key: ${{ secrets.AUTOMATION_GITHUB_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
 
       - name: Install tools via mise
         uses: jdx/mise-action@v2
@@ -38,7 +37,7 @@ jobs:
       - name: Sync labels to all repos
         uses: qoomon/actions--parallel-steps@v1
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.auth.outputs.token }}
         with:
           steps: |
             - id: ai-mktpl
