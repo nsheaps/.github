@@ -1,0 +1,26 @@
+name: Upsert PR Comment
+description: Create or update a PR comment identified by a hidden marker
+
+inputs:
+  comment-tag:
+    description: Unique tag to identify the comment for updates (used as hidden HTML marker)
+    required: true
+  body:
+    description: The comment body (marker is prepended automatically)
+    required: true
+  issue-number:
+    description: The issue or PR number to comment on
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Upsert comment
+      uses: GrantBirki/comment@v2
+      with:
+        issue-number: ${{ inputs.issue-number }}
+        find: <!-- ${{ inputs.comment-tag }} -->
+        mode: upsert
+        body: |
+          <!-- ${{ inputs.comment-tag }} -->
+          ${{ inputs.body }}
