@@ -70,3 +70,9 @@ jobs:
               run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/gs-stack-status
             - id: workspaces
               run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/workspaces
+            - id: ai-agent-jack
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/.ai-agent-jack
+            - id: ai-agent-henry
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/.ai-agent-henry
+            - id: ai-agent-pamela
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/.ai-agent-pamela
