@@ -61,6 +61,10 @@
   color: "FF6600"
   description: "Requires repo owner decision, credentials, or approval"
 
+- name: "needs-work"
+  color: "E8860C"
+  description: "Changes needed before merge or close"
+
 - name: "ready"
   color: "0E8A16"
   description: "QA approved — ready to merge"
