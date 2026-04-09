@@ -29,7 +29,7 @@ jobs:
           private-key: ${{ secrets.AUTOMATION_GITHUB_APP_PRIVATE_KEY }}
 
       - name: Install tools via mise
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@v3
 
       - name: Install github-label-sync
         run: npm install -g github-label-sync@${{ env.LABEL_SYNC_VERSION }}
