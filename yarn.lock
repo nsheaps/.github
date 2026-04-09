@@ -408,7 +408,7 @@ __metadata:
   resolution: "@nsheaps/dotgithub@workspace:."
   dependencies:
     "@eslint/js": "npm:^10.0.1"
-    "@types/node": "npm:^22.0.0"
+    "@types/node": "npm:^22.19.15"
     eslint: "npm:^10.0.3"
     nx: "npm:^22.4.4"
     tsx: "npm:^4.19.0"
@@ -421,7 +421,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nsheaps/sync-stars-pull@workspace:.github/actions/sync-stars-pull"
   dependencies:
-    "@types/node": "npm:^22.0.0"
+    "@types/node": "npm:^22.19.15"
   languageName: unknown
   linkType: soft
 
@@ -548,12 +548,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22.0.0":
-  version: 22.19.5
-  resolution: "@types/node@npm:22.19.5"
+"@types/node@npm:^22.19.15":
+  version: 22.19.17
+  resolution: "@types/node@npm:22.19.17"
   dependencies:
     undici-types: "npm:~6.21.0"
-  checksum: 10c0/753c86850d2e3d9a7ccaa2569d565ab20d9a69389871e45283f71035c62fed649511aee7e05da8209b41e15438085c43b533d01e9ed3bb2e9dbd570aef732354
+  checksum: 10c0/b66c484c0a9f6d88b1ef360b0f487717234ee1a482cb2551ff73d9f3c43a42a777daf4c8a5eee970960728f8fe1f3877d3d8c6ffabcbca74cb401a59db700fa4
   languageName: node
   linkType: hard
 
