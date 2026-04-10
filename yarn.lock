@@ -411,7 +411,7 @@ __metadata:
     "@types/node": "npm:^24.12.0"
     eslint: "npm:^10.0.3"
     nx: "npm:^22.4.4"
-    tsx: "npm:^4.19.0"
+    tsx: "npm:^4.21.0"
     typescript: "npm:^5.7.0"
     typescript-eslint: "npm:^8.54.0"
   languageName: unknown
@@ -2798,7 +2798,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsx@npm:^4.19.0":
+"tsx@npm:^4.21.0":
   version: 4.21.0
   resolution: "tsx@npm:4.21.0"
   dependencies:
