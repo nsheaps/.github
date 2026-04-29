@@ -75,7 +75,7 @@
 
 - name: "future/after-milestone/issue-migration"
   # future meaning after some milestone
-  description: "Do not do anything to this PR or issue until after all tasks in this thread are completed: https://discord.com/channels/1490863845252665415/1497431286661517353",
+  description: "Do not do anything to this PR or issue until after all tasks in this thread are completed: https://discord.com/channels/1490863845252665415/1497431286661517353"
   color: "FF0000"
 
 - name: "review/agent-henry"
