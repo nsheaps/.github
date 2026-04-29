@@ -1,0 +1,52 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check bash syntax
+        run: |
+          errors=0
+          # Check top-level scripts in bin/, skipping directories
+          for script in bin/*; do
+            [[ -d "$script" ]] && continue
+            echo "Checking $script..."
+            bash -n "$script" || errors=$((errors + 1))
+          done
+          # Check library files if they exist
+          if compgen -G "bin/lib/*.sh" > /dev/null; then
+            for lib in bin/lib/*.sh; do
+              echo "Checking $lib..."
+              bash -n "$lib" || errors=$((errors + 1))
+            done
+          fi
+          if [[ $errors -gt 0 ]]; then
+            echo "::error::$errors file(s) failed syntax check"
+            exit 1
+          fi
+          echo "All scripts passed syntax check."
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+
+      - name: Run tests
+        run: mise run test

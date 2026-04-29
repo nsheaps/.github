@@ -2,6 +2,11 @@
 # File synchronization role
 # Syncs a single file to multiple target repositories
 # Central repo trumps target; preserves target changes via PR
+#
+# Supports two modes:
+#   - Exact copy (default): source file is copied as-is
+#   - Template mode (template: true): source file is rendered with Jinja2
+#     using per-repo vars before syncing
 
 - name: Validate required variables
   ansible.builtin.assert:
@@ -16,11 +21,18 @@
 
 - name: Display sync operation
   ansible.builtin.debug:
-    msg: "Syncing {{ sync_file.source }} → {{ sync_file.dest }} to {{ sync_file.repos | length }} repo(s)"
+    msg: >-
+      Syncing {{ sync_file.source }} → {{ sync_file.dest }}
+      to {{ sync_file.repos | length }} repo(s)
+      {{ '(template mode)' if sync_file.template | default(false) else '(exact copy)' }}
 
 - name: Process each target repository
   ansible.builtin.include_tasks: sync_to_repo.yml
   loop: "{{ sync_file.repos }}"
   loop_control:
-    loop_var: target_repo
-    label: "{{ target_repo }}"
+    loop_var: target_repo_entry
+    label: "{{ target_repo_entry.repo if target_repo_entry is mapping else target_repo_entry }}"
+  vars:
+    # Normalize: plain string becomes { repo: "string" }, dicts pass through
+    target_repo: "{{ target_repo_entry.repo if target_repo_entry is mapping else target_repo_entry }}"
+    repo_vars: "{{ target_repo_entry.vars | default({}) if target_repo_entry is mapping else {} }}"

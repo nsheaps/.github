@@ -5,6 +5,10 @@
 # Central repository always trumps target repos.
 # If target has modifications, opens PR in .github to preserve changes.
 #
+# Supports two modes per file:
+#   - Exact copy (default): source file is copied as-is
+#   - Template mode (template: true): source is rendered with Jinja2 per-repo vars
+#
 # Usage:
 #   Local: export GITHUB_TOKEN=ghp_xxx && mise run sync-files
 #   CI: Runs automatically via GitHub Actions
@@ -36,31 +40,6 @@
             Force sync: {{ _force_sync }}
             Preserve target changes: {{ preserve_changes }}
 
-    - name: Build sync tasks from file config
-      ansible.builtin.set_fact:
-        sync_tasks: >-
-          {{
-            files | dict2items
-            | selectattr('value.repos', 'defined')
-            | selectattr('value.repos', '!=', [])
-            | map('combine', {'source_path': 'PLACEHOLDER'})
-            | list
-          }}
-
-    - name: Enrich sync tasks with source paths
-      ansible.builtin.set_fact:
-        sync_tasks: >-
-          {{
-            sync_tasks | map('combine', {
-              'source_path': item.key,
-              'dest_path': item.value.dest | default(item.key),
-              'repos': item.value.repos
-            }) | list
-          }}
-      loop: "{{ files | dict2items | selectattr('value.repos', 'defined') | selectattr('value.repos', '!=', []) | list }}"
-      loop_control:
-        label: "{{ item.key }}"
-
     - name: Rebuild sync tasks properly
       ansible.builtin.set_fact:
         sync_tasks: []
@@ -72,7 +51,8 @@
             sync_tasks + [{
               'source_path': item.key,
               'dest_path': item.value.dest | default(item.key),
-              'repos': item.value.repos
+              'repos': item.value.repos,
+              'template': item.value.template | default(false)
             }]
           }}
       loop: "{{ files | dict2items | selectattr('value.repos', 'defined') | selectattr('value.repos', '!=', []) | list }}"
@@ -91,6 +71,7 @@
           source: "{{ item.source_path }}"
           dest: "{{ item.dest_path }}"
           repos: "{{ item.repos }}"
+          template: "{{ item.template }}"
       loop: "{{ sync_tasks }}"
       loop_control:
         loop_var: item
