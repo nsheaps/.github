@@ -76,3 +76,7 @@ jobs:
               run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/.ai-agent-henry
             - id: ai-agent-pamela
               run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/.ai-agent-pamela
+            - id: agents
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/agents
+            - id: claudesh
+              run: github-label-sync --access-token "$GITHUB_TOKEN" $LABEL_SYNC_ARGS nsheaps/claudesh
