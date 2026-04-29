@@ -68,3 +68,17 @@
 - name: "ready"
   color: "0E8A16"
   description: "QA approved — ready to merge"
+
+- name: "milestone/issue-migration"
+  color: "0E8A16"
+  description: "PRs and issues for issue-migration to github issues from discord threads. Henry is project manager, but all agents should add this label
+
+- name: "future/after-milestone/issue-migration"
+  # future meaning after some milestone
+  description: "Do not do anything to this PR or issue until after all tasks in this thread are completed: https://discord.com/channels/1490863845252665415/1497431286661517353",
+  color: "FF0000"
+
+- name: "review/agent-henry"
+  # Label is used in place of github reviewers because you cannot request review from a github app (though they can leave reviews). Use in conjunction with a required CI workflow to check if codeowners is satisfied rather than enforcement of reviews and codeowners with branch rules. This helps simplify repo-rulesets and allows for more complex review satisfactions (eg renovate can automerge patch updates without a review and the CI workflow rule evaluation would allow a PR to be merged without a review rather than other suggestions from the web which suggest to auto-approve it. Always prefer to properly allow/deny so we can later filter by "merged without a review". If we do end up going the auto-approve route, we should have the auto-approve workflow apply a new review/auto-approved label (and similarly if a user comments "/review approve <reason it should be approved>" on their own PR (doesn't work on PRs owned by others, only your own), it should add a review/self-approved label (none of which exist yet and need to be added to issue drafts)
+  description: "assign review to Henry (the AI agent)"
+  color: "0000FF"
