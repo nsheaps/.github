@@ -71,7 +71,7 @@
 
 - name: "milestone/issue-migration"
   color: "0E8A16"
-  description: "PRs and issues for issue-migration to github issues from discord threads. Henry is project manager, but all agents should add this label
+  description: "PRs and issues for issue-migration to github issues from discord threads. Henry is project manager, but all agents should add this label to the new issues created, or PRs and issues that were successfully closed as part of getting ready for it (the blockers)"
 
 - name: "future/after-milestone/issue-migration"
   # future meaning after some milestone
